@@ -29,7 +29,8 @@ struct FitInApp: App {
 // Switches between the sign-in flow and the main app based on auth state.
 private struct RootView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-
+    @State private var hasHandledHealthPermission = false
+ 
     var body: some View {
         switch authViewModel.state {
         case .checkingSession:
@@ -37,7 +38,13 @@ private struct RootView: View {
         case .signedOut:
             SignInView()
         case .signedIn:
-            ContentView()
+            if hasHandledHealthPermission {
+                ContentView()
+            } else {
+                HealthPermissionView {
+                    hasHandledHealthPermission = true
+                }
+            }
         }
     }
 }
