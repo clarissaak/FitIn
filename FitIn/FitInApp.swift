@@ -4,7 +4,6 @@
 //
 //  Created by Clarissa Kristanto on 7/20/26.
 //
-
 import SwiftUI
 import GoogleSignIn
 
@@ -26,11 +25,11 @@ struct FitInApp: App {
     }
 }
 
-// Switches between the sign-in flow and the main app based on auth state.
+/// Switches between the sign-in flow and the main app based on auth state.
 private struct RootView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var hasHandledHealthPermission = false
- 
+
     var body: some View {
         switch authViewModel.state {
         case .checkingSession:
@@ -39,7 +38,8 @@ private struct RootView: View {
             SignInView()
         case .signedIn:
             if hasHandledHealthPermission {
-                ContentView()
+                // Temporary: swap back to ContentView (or your real dashboard) once Sheets testing is done.
+                SheetsTestView()
             } else {
                 HealthPermissionView {
                     hasHandledHealthPermission = true
