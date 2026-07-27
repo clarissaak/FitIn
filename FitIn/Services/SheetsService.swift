@@ -63,8 +63,8 @@ final class SheetsService {
 
     // MARK: - Create spreadsheet
 
-    // Creates a new spreadsheet with "Users" and "Steps" tabs, writes
-    // their header rows, and returns the new spreadsheet's ID.
+    // Creates a new spreadsheet with "Users", "Steps", and "HeartRate" tabs,
+    // writes their header rows, and returns the new spreadsheet's ID.
     func createSpreadsheet(name: String) async throws -> String {
         guard let url = URL(string: sheetsBase) else { throw SheetsError.invalidURL }
 
@@ -72,7 +72,8 @@ final class SheetsService {
             "properties": ["title": name],
             "sheets": [
                 ["properties": ["title": "Users"]],
-                ["properties": ["title": "Steps"]]
+                ["properties": ["title": "Steps"]],
+                ["properties": ["title": "HeartRate"]]
             ]
         ]
 
@@ -98,6 +99,11 @@ final class SheetsService {
             spreadsheetId: spreadsheetId,
             range: "Steps!A1:C1",
             values: [DailySteps.headerRow]
+        )
+        try await updateRange(
+            spreadsheetId: spreadsheetId,
+            range: "HeartRate!A1:C1",
+            values: [DailyHeartRate.headerRow]
         )
     }
 
@@ -179,6 +185,42 @@ final class SheetsService {
     func fetchAllSteps(spreadsheetId: String) async throws -> [DailySteps] {
         let rows = try await fetchRawValues(spreadsheetId: spreadsheetId, range: "Steps!A2:C")
         return rows.compactMap { DailySteps.from(row: $0) }
+    }
+
+    // MARK: - Heart Rate
+
+    // Adds today's elevated heart rate minutes entry, or updates it if one
+    // already exists for this email + date combination.
+    func upsertTodayHeartRate(spreadsheetId: String, metric: DailyHeartRate) async throws {
+        let rows = try await fetchRawValues(spreadsheetId: spreadsheetId, range: "HeartRate!A2:C")
+
+        if let existingIndex = rows.firstIndex(where: { $0.count >= 2 && $0[0] == metric.date && $0[1] == metric.email }) {
+            let rowNumber = existingIndex + 2
+            try await updateRange(
+                spreadsheetId: spreadsheetId,
+                range: "HeartRate!A\(rowNumber):C\(rowNumber)",
+                values: [metric.asRow]
+            )
+        } else {
+            try await appendRange(
+                spreadsheetId: spreadsheetId,
+                range: "HeartRate!A:C",
+                values: [metric.asRow]
+            )
+        }
+    }
+
+    // Fetches all heart rate entries for today's date (device-local calendar day).
+    func fetchTodayHeartRate(spreadsheetId: String) async throws -> [DailyHeartRate] {
+        let all = try await fetchAllHeartRate(spreadsheetId: spreadsheetId)
+        let today = Self.dateFormatter.string(from: Date())
+        return all.filter { $0.date == today }
+    }
+
+    // Fetches every heart rate entry in the sheet, regardless of date.
+    func fetchAllHeartRate(spreadsheetId: String) async throws -> [DailyHeartRate] {
+        let rows = try await fetchRawValues(spreadsheetId: spreadsheetId, range: "HeartRate!A2:C")
+        return rows.compactMap { DailyHeartRate.from(row: $0) }
     }
 
     static let dateFormatter: DateFormatter = {

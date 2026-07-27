@@ -7,7 +7,7 @@
 import SwiftUI
 
 // Temporary debug view to manually trigger and verify each SheetsService
-// call. 
+// call. Replace with a real group creation/join flow once that's designed.
 struct SheetsTestView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
 
@@ -35,8 +35,10 @@ struct SheetsTestView: View {
                     actionButton("2. Share Anyone With Link", action: shareLink)
                     actionButton("3. Add Self As User", action: addSelfAsUser)
                     actionButton("4. Upload Today's Steps", action: uploadSteps)
-                    actionButton("5. Fetch Users", action: fetchUsers)
-                    actionButton("6. Fetch Today's Steps", action: fetchSteps)
+                    actionButton("5. Upload Today's Heart Rate", action: uploadHeartRate)
+                    actionButton("6. Fetch Users", action: fetchUsers)
+                    actionButton("7. Fetch Today's Steps", action: fetchSteps)
+                    actionButton("8. Fetch Today's Heart Rate", action: fetchHeartRate)
                 }
 
                 if isBusy {
@@ -114,6 +116,23 @@ struct SheetsTestView: View {
         }
     }
 
+    private func uploadHeartRate() {
+        run {
+            try requireSpreadsheetId()
+            guard let currentUser = authViewModel.currentUser else {
+                return "No signed-in user found."
+            }
+            let elevatedMinutes = try await HealthKitService.shared.elevatedHeartRateMinutesToday()
+            let entry = DailyHeartRate(
+                date: SheetsService.dateFormatter.string(from: Date()),
+                email: currentUser.email ?? "unknown",
+                elevatedHRMinutes: elevatedMinutes
+            )
+            try await SheetsService.shared.upsertTodayHeartRate(spreadsheetId: spreadsheetId, metric: entry)
+            return "Uploaded elevated HR: \(String(format: "%.1f", entry.elevatedHRMinutes)) min for \(entry.email)"
+        }
+    }
+
     private func fetchUsers() {
         run {
             try requireSpreadsheetId()
@@ -127,6 +146,14 @@ struct SheetsTestView: View {
             try requireSpreadsheetId()
             let steps = try await SheetsService.shared.fetchTodaySteps(spreadsheetId: spreadsheetId)
             return "Today's Steps:\n" + steps.map { "\($0.email): \($0.steps)" }.joined(separator: "\n")
+        }
+    }
+
+    private func fetchHeartRate() {
+        run {
+            try requireSpreadsheetId()
+            let metrics = try await SheetsService.shared.fetchTodayHeartRate(spreadsheetId: spreadsheetId)
+            return "Today's Heart Rate:\n" + metrics.map { "\($0.email): \(String(format: "%.1f", $0.elevatedHRMinutes)) min elevated" }.joined(separator: "\n")
         }
     }
 
