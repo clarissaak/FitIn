@@ -5,15 +5,22 @@
 //  Created by Clarissa Kristanto on 7/23/26.
 //
 import SwiftUI
+import UIKit
 
 // Temporary debug view to manually trigger and verify each SheetsService
-// call. Replace with a real group creation/join flow once that's designed.
+// call against the current group's spreadsheet. Replace with the real
+// dashboard once that's designed.
 struct SheetsTestView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
 
-    @State private var spreadsheetId: String = ""
     @State private var log: String = "No actions yet."
     @State private var isBusy = false
+
+    // Always use the current group's spreadsheet, never a separate one.
+    private var spreadsheetId: String? {
+        groupSetupViewModel.currentGroup?.spreadsheetId
+    }
 
     var body: some View {
         ScrollView {
@@ -21,24 +28,38 @@ struct SheetsTestView: View {
                 Text("Sheets Test")
                     .font(.title2.bold())
 
-                if !spreadsheetId.isEmpty {
-                    Text("Spreadsheet ID:")
+                Button("Leave Group (debug)") {
+                    groupSetupViewModel.leaveGroup()
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+
+                if let group = groupSetupViewModel.currentGroup, let url = group.spreadsheetURL {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Group Spreadsheet:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Link(url.absoluteString, destination: url)
+                            .font(.caption)
+                        Button {
+                            UIPasteboard.general.string = url.absoluteString
+                        } label: {
+                            Label("Copy Link", systemImage: "doc.on.doc")
+                                .font(.caption)
+                        }
+                    }
+                } else {
+                    Text("No group spreadsheet found.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(spreadsheetId)
-                        .font(.caption.monospaced())
-                        .textSelection(.enabled)
+                        .foregroundStyle(.red)
                 }
 
                 VStack(spacing: 10) {
-                    actionButton("1. Create Spreadsheet", action: createSpreadsheet)
-                    actionButton("2. Share Anyone With Link", action: shareLink)
-                    actionButton("3. Add Self As User", action: addSelfAsUser)
-                    actionButton("4. Upload Today's Steps", action: uploadSteps)
-                    actionButton("5. Upload Today's Heart Rate", action: uploadHeartRate)
-                    actionButton("6. Fetch Users", action: fetchUsers)
-                    actionButton("7. Fetch Today's Steps", action: fetchSteps)
-                    actionButton("8. Fetch Today's Heart Rate", action: fetchHeartRate)
+                    actionButton("Upload Today's Steps", action: uploadSteps)
+                    actionButton("Upload Today's Heart Rate", action: uploadHeartRate)
+                    actionButton("Fetch Users", action: fetchUsers)
+                    actionButton("Fetch Today's Steps", action: fetchSteps)
+                    actionButton("Fetch Today's Heart Rate", action: fetchHeartRate)
                 }
 
                 if isBusy {
@@ -66,42 +87,9 @@ struct SheetsTestView: View {
 
     // MARK: - Actions
 
-    private func createSpreadsheet() {
-        run {
-            let id = try await SheetsService.shared.createSpreadsheet(name: "FitIn Test Sheet")
-            spreadsheetId = id
-            return "Created spreadsheet: \(id)"
-        }
-    }
-
-    private func shareLink() {
-        run {
-            try requireSpreadsheetId()
-            try await SheetsService.shared.shareAnyoneWithLink(spreadsheetId: spreadsheetId)
-            return "Shared with anyone-with-link access."
-        }
-    }
-
-    private func addSelfAsUser() {
-        run {
-            try requireSpreadsheetId()
-            guard let currentUser = authViewModel.currentUser else {
-                return "No signed-in user found."
-            }
-            let user = User(
-                email: currentUser.email ?? "unknown",
-                name: currentUser.name ?? "unknown",
-                sub: currentUser.sub,
-                joinedDate: SheetsService.dateFormatter.string(from: Date())
-            )
-            try await SheetsService.shared.appendOrUpdateUser(spreadsheetId: spreadsheetId, user: user)
-            return "Added/updated user: \(user.email)"
-        }
-    }
-
     private func uploadSteps() {
         run {
-            try requireSpreadsheetId()
+            let spreadsheetId = try requireSpreadsheetId()
             guard let currentUser = authViewModel.currentUser else {
                 return "No signed-in user found."
             }
@@ -118,7 +106,7 @@ struct SheetsTestView: View {
 
     private func uploadHeartRate() {
         run {
-            try requireSpreadsheetId()
+            let spreadsheetId = try requireSpreadsheetId()
             guard let currentUser = authViewModel.currentUser else {
                 return "No signed-in user found."
             }
@@ -135,7 +123,7 @@ struct SheetsTestView: View {
 
     private func fetchUsers() {
         run {
-            try requireSpreadsheetId()
+            let spreadsheetId = try requireSpreadsheetId()
             let users = try await SheetsService.shared.fetchUsers(spreadsheetId: spreadsheetId)
             return "Users:\n" + users.map { "\($0.name) — \($0.email)" }.joined(separator: "\n")
         }
@@ -143,7 +131,7 @@ struct SheetsTestView: View {
 
     private func fetchSteps() {
         run {
-            try requireSpreadsheetId()
+            let spreadsheetId = try requireSpreadsheetId()
             let steps = try await SheetsService.shared.fetchTodaySteps(spreadsheetId: spreadsheetId)
             return "Today's Steps:\n" + steps.map { "\($0.email): \($0.steps)" }.joined(separator: "\n")
         }
@@ -151,16 +139,17 @@ struct SheetsTestView: View {
 
     private func fetchHeartRate() {
         run {
-            try requireSpreadsheetId()
+            let spreadsheetId = try requireSpreadsheetId()
             let metrics = try await SheetsService.shared.fetchTodayHeartRate(spreadsheetId: spreadsheetId)
             return "Today's Heart Rate:\n" + metrics.map { "\($0.email): \(String(format: "%.1f", $0.elevatedHRMinutes)) min elevated" }.joined(separator: "\n")
         }
     }
 
-    private func requireSpreadsheetId() throws {
-        if spreadsheetId.isEmpty {
-            throw NSError(domain: "SheetsTestView", code: 1, userInfo: [NSLocalizedDescriptionKey: "Create a spreadsheet first (step 1)."])
+    private func requireSpreadsheetId() throws -> String {
+        guard let spreadsheetId else {
+            throw NSError(domain: "SheetsTestView", code: 1, userInfo: [NSLocalizedDescriptionKey: "No group spreadsheet found."])
         }
+        return spreadsheetId
     }
 
     // MARK: - Runner
@@ -181,4 +170,5 @@ struct SheetsTestView: View {
 #Preview {
     SheetsTestView()
         .environmentObject(AuthViewModel())
+        .environmentObject(GroupSetupViewModel())
 }

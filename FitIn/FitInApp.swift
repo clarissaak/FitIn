@@ -10,24 +10,29 @@ import GoogleSignIn
 @main
 struct FitInApp: App {
     @StateObject private var authViewModel = AuthViewModel()
+    @StateObject private var groupSetupViewModel = GroupSetupViewModel()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(authViewModel)
+                .environmentObject(groupSetupViewModel)
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)
                 }
                 .task {
                     await authViewModel.restoreSessionIfAvailable()
+                    groupSetupViewModel.restoreGroupIfAvailable()
                 }
         }
     }
 }
 
-/// Switches between the sign-in flow and the main app based on auth state.
+// Switches between sign-in, health permission, group setup, and the main
+// app based on current state.
 private struct RootView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
     @State private var hasHandledHealthPermission = false
 
     var body: some View {
@@ -37,13 +42,15 @@ private struct RootView: View {
         case .signedOut:
             SignInView()
         case .signedIn:
-            if hasHandledHealthPermission {
-                // Temporary: swap back to ContentView (or your real dashboard) once Sheets testing is done.
-                SheetsTestView()
-            } else {
+            if !hasHandledHealthPermission {
                 HealthPermissionView {
                     hasHandledHealthPermission = true
                 }
+            } else if !groupSetupViewModel.isReadyToProceed {
+                GroupSetupView()
+            } else {
+                // Temporary: swap back to ContentView (or your real dashboard) once Sheets testing is done.
+                SheetsTestView()
             }
         }
     }
