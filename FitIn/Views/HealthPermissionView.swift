@@ -30,7 +30,7 @@ struct HealthPermissionView: View {
             VStack(spacing: 8) {
                 Text("Connect Health Data")
                     .font(.title2.bold())
-                Text("FitIn reads your step count so you can share your activity with other users. Your data stays private until you choose to share it.")
+                Text("FitIn reads your activity data to share your progress with other users. Your data stays private until you choose to share it.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

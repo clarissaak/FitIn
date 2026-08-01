@@ -5,7 +5,6 @@
 //  Created by Clarissa Kristanto on 7/28/26.
 //
 import SwiftUI
-import UIKit
 
 // Lets the user create a new group (and see the shareable code to hand
 // out) or join an existing group by pasting a code.
@@ -46,17 +45,6 @@ struct GroupSetupView: View {
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .padding(.horizontal, 32)
-            }
-
-            if let group = groupSetupViewModel.currentGroup {
-                shareableCodeSection(group: group)
-
-                Button("Continue") {
-                    groupSetupViewModel.confirmSetup()
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.horizontal, 32)
-                .padding(.top, 8)
             }
 
             Spacer()
@@ -112,26 +100,6 @@ struct GroupSetupView: View {
         }
     }
 
-    private func shareableCodeSection(group: UserGroup) -> some View {
-        VStack(spacing: 8) {
-            Text("Share this link to invite others:")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            if let url = group.spreadsheetURL {
-                Link(url.absoluteString, destination: url)
-                    .font(.footnote)
-                    .padding(.horizontal, 32)
-                    .multilineTextAlignment(.center)
-                Button {
-                    UIPasteboard.general.string = url.absoluteString
-                } label: {
-                    Label("Copy Link", systemImage: "doc.on.doc")
-                        .font(.footnote)
-                }
-            }
-        }
-        .padding(.top, 12)
-    }
 }
 
 #Preview {

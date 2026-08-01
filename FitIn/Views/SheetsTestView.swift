@@ -23,6 +23,7 @@ struct SheetsTestView: View {
     }
 
     var body: some View {
+        NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Sheets Test")
@@ -54,6 +55,12 @@ struct SheetsTestView: View {
                         .foregroundStyle(.red)
                 }
 
+                NavigationLink("Set Your Goals") {
+                    GoalSettingView()
+                }
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity)
+
                 VStack(spacing: 10) {
                     actionButton("Upload Today's Steps", action: uploadSteps)
                     actionButton("Upload Today's Heart Rate", action: uploadHeartRate)
@@ -75,6 +82,7 @@ struct SheetsTestView: View {
                     .textSelection(.enabled)
             }
             .padding()
+        }
         }
     }
 
@@ -110,7 +118,9 @@ struct SheetsTestView: View {
             guard let currentUser = authViewModel.currentUser else {
                 return "No signed-in user found."
             }
-            let elevatedMinutes = try await HealthKitService.shared.elevatedHeartRateMinutesToday()
+            let users = try await SheetsService.shared.fetchUsers(spreadsheetId: spreadsheetId)
+            let threshold = users.first(where: { $0.email == currentUser.email })?.heartRateGoal ?? User.defaultHeartRateGoal
+            let elevatedMinutes = try await HealthKitService.shared.elevatedHeartRateMinutesToday(threshold: Double(threshold))
             let entry = DailyHeartRate(
                 date: SheetsService.dateFormatter.string(from: Date()),
                 email: currentUser.email ?? "unknown",

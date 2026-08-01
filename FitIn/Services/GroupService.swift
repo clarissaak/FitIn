@@ -68,7 +68,7 @@ final class GroupService {
         guard let currentUser = GoogleAuthService.shared.currentUser else {
             throw GroupError.noCurrentUser
         }
-        let user = User(
+        let user = User.newUser(
             email: currentUser.email ?? "unknown",
             name: currentUser.name ?? "unknown",
             sub: currentUser.sub,

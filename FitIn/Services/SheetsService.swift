@@ -92,7 +92,7 @@ final class SheetsService {
     private func writeHeaderRows(spreadsheetId: String) async throws {
         try await updateRange(
             spreadsheetId: spreadsheetId,
-            range: "Users!A1:D1",
+            range: "Users!A1:H1",
             values: [User.headerRow]
         )
         try await updateRange(
@@ -127,19 +127,19 @@ final class SheetsService {
     // Adds a new user row, or updates the existing row if the email
     // already exists in the Users sheet.
     func appendOrUpdateUser(spreadsheetId: String, user: User) async throws {
-        let rows = try await fetchRawValues(spreadsheetId: spreadsheetId, range: "Users!A2:D")
+        let rows = try await fetchRawValues(spreadsheetId: spreadsheetId, range: "Users!A2:H")
 
         if let existingIndex = rows.firstIndex(where: { $0.first == user.email }) {
             let rowNumber = existingIndex + 2 // +2: header row + 1-indexed
             try await updateRange(
                 spreadsheetId: spreadsheetId,
-                range: "Users!A\(rowNumber):D\(rowNumber)",
+                range: "Users!A\(rowNumber):H\(rowNumber)",
                 values: [user.asRow]
             )
         } else {
             try await appendRange(
                 spreadsheetId: spreadsheetId,
-                range: "Users!A:D",
+                range: "Users!A:H",
                 values: [user.asRow]
             )
         }
@@ -147,7 +147,7 @@ final class SheetsService {
 
     // Fetches all users from the Users sheet.
     func fetchUsers(spreadsheetId: String) async throws -> [User] {
-        let rows = try await fetchRawValues(spreadsheetId: spreadsheetId, range: "Users!A2:D")
+        let rows = try await fetchRawValues(spreadsheetId: spreadsheetId, range: "Users!A2:H")
         return rows.compactMap { User.from(row: $0) }
     }
 
