@@ -29,7 +29,7 @@ struct FitInApp: App {
 }
 
 // Switches between sign-in, health permission, group setup, birth date
-// onboarding, and the main app based on current state.
+// onboarding, and the main dashboard based on current state.
 private struct RootView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
@@ -54,8 +54,7 @@ private struct RootView: View {
                     hasHandledBirthDate = true
                 }
             } else {
-                // Temporary: swap back to ContentView (or your real dashboard) once Sheets testing is done.
-                SheetsTestView()
+                DashboardView()
             }
         }
     }
