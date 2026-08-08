@@ -11,6 +11,7 @@ import SwiftUI
 // to refresh (also re-uploads the current user's latest HealthKit data).
 struct DashboardView: View {
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
+    @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var dashboardViewModel = DashboardViewModel()
 
     var body: some View {
@@ -23,7 +24,13 @@ struct DashboardView: View {
                 }
 
                 ForEach(dashboardViewModel.rows) { row in
-                    memberRow(row)
+                    NavigationLink {
+                        if let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
+                            TrendsView(email: row.email, displayName: row.displayName, spreadsheetId: spreadsheetId)
+                        }
+                    } label: {
+                        memberRow(row)
+                    }
                 }
             }
             .navigationTitle("Today")
@@ -35,8 +42,15 @@ struct DashboardView: View {
                     .font(.footnote)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink("Goals") {
-                        GoalSettingView()
+                    HStack {
+                        if let currentUser = authViewModel.currentUser, let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
+                            NavigationLink("My Trends") {
+                                TrendsView(email: currentUser.email ?? "", displayName: "My Trends", spreadsheetId: spreadsheetId)
+                            }
+                        }
+                        NavigationLink("Goals") {
+                            GoalSettingView()
+                        }
                     }
                 }
             }
@@ -112,4 +126,5 @@ struct DashboardView: View {
 #Preview {
     DashboardView()
         .environmentObject(GroupSetupViewModel())
+        .environmentObject(AuthViewModel())
 }

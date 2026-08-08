@@ -54,7 +54,7 @@ private struct RootView: View {
                     hasHandledBirthDate = true
                 }
             } else {
-                DashboardView()
+                SummaryView()
             }
         }
     }
