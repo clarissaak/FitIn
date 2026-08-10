@@ -33,25 +33,13 @@ struct DashboardView: View {
                     }
                 }
             }
-            .navigationTitle("Today")
+            .navigationTitle("Sharing")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink("Debug") {
                         SheetsTestView()
                     }
                     .font(.footnote)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack {
-                        if let currentUser = authViewModel.currentUser, let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
-                            NavigationLink("My Trends") {
-                                TrendsView(email: currentUser.email ?? "", displayName: "My Trends", spreadsheetId: spreadsheetId)
-                            }
-                        }
-                        NavigationLink("Goals") {
-                            GoalSettingView()
-                        }
-                    }
                 }
             }
             .refreshable {
