@@ -22,6 +22,8 @@ final class DashboardViewModel: ObservableObject {
     private let healthKitService = HealthKitService.shared
 
     func refresh(spreadsheetId: String) async {
+        guard !isLoading else { return }
+
         errorMessage = nil
         isLoading = true
 

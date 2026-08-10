@@ -5,12 +5,16 @@
 //  Created by Clarissa Kristanto on 7/21/26.
 //
 import Foundation
-import SwiftUI
 import Combine
 import UIKit
+import SwiftUI
 
 // Drives auth state for the app root: whether a user is signed in,
-// who they are, and any in-flight error to surface in the UI.
+// who they are, and any in-flight error to surface in the UI. Also
+// listens for .authSessionExpired (posted when a token refresh fails)
+// so a mid-use session expiry routes back to sign-in with an
+// explanatory message, instead of leaving deeper screens stuck on
+// failed network calls.
 @MainActor
 final class AuthViewModel: ObservableObject {
 
@@ -24,6 +28,16 @@ final class AuthViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let authService = GoogleAuthService.shared
+    private var cancellables = Set<AnyCancellable>()
+
+    init() {
+        NotificationCenter.default.publisher(for: .authSessionExpired)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.handleSessionExpired()
+            }
+            .store(in: &cancellables)
+    }
 
     var isSignedIn: Bool {
         if case .signedIn = state { return true }
@@ -60,5 +74,10 @@ final class AuthViewModel: ObservableObject {
     func signOut() {
         authService.signOut()
         state = .signedOut
+    }
+
+    private func handleSessionExpired() {
+        state = .signedOut
+        errorMessage = "Your session expired. Please sign in again."
     }
 }

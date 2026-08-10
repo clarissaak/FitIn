@@ -5,12 +5,17 @@
 //  Created by Clarissa Kristanto on 7/21/26.
 //
 import Foundation
-import GoogleSignIn
 import UIKit
+import GoogleSignIn
 
 // Wraps GIDSignIn to provide a simple async interface for sign-in,
 // session restoration, and token access. Requests Sheets + Drive scopes
 // alongside the default OpenID/email/profile scopes at sign-in time.
+//
+// If a token refresh ever fails (revoked access, expired refresh token,
+// etc.), this signs the user out and posts .authSessionExpired so the
+// app can route back to sign-in rather than silently failing deeper
+// network calls.
 @MainActor
 final class GoogleAuthService {
 
@@ -73,14 +78,23 @@ final class GoogleAuthService {
 
     // MARK: - Access token (auto-refreshing)
 
-    // Returns a valid access token, refreshing it first if needed.
-    // Throws if there is no current user or the refresh fails.
+    // Returns a valid access token, refreshing it first if needed. If the
+    // refresh itself fails (e.g. the user revoked access, or the refresh
+    // token expired), this signs the user out and posts
+    // .authSessionExpired before rethrowing, so the app can prompt re-auth
+    // instead of every caller having to handle this individually.
     func validAccessToken() async throws -> String {
         guard let currentUser = GIDSignIn.sharedInstance.currentUser else {
             throw AuthError.noCurrentUser
         }
-        let refreshedUser = try await currentUser.refreshTokensIfNeeded()
-        return refreshedUser.accessToken.tokenString
+        do {
+            let refreshedUser = try await currentUser.refreshTokensIfNeeded()
+            return refreshedUser.accessToken.tokenString
+        } catch {
+            signOut()
+            NotificationCenter.default.post(name: .authSessionExpired, object: nil)
+            throw AuthError.sessionExpired
+        }
     }
 
     // Returns the currently signed-in user, if any, without triggering
@@ -96,5 +110,13 @@ final class GoogleAuthService {
 
     enum AuthError: Error {
         case noCurrentUser
+        case sessionExpired
     }
+}
+
+extension Notification.Name {
+    // Posted when a token refresh fails and the user has been signed out
+    // as a result. AuthViewModel listens for this to route back to
+    // sign-in with an explanatory message.
+    static let authSessionExpired = Notification.Name("authSessionExpired")
 }

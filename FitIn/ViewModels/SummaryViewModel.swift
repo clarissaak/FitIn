@@ -30,6 +30,11 @@ final class SummaryViewModel: ObservableObject {
     private let sparklineDayCount = 7
 
     func refresh(spreadsheetId: String) async {
+        // Prevent overlapping refreshes — e.g. the initial .task load and a
+        // near-simultaneous scenePhase-triggered refresh on launch — which
+        // otherwise race and cancel each other's in-flight requests.
+        guard !isLoading else { return }
+
         errorMessage = nil
         isLoading = true
 

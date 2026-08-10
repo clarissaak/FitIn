@@ -13,6 +13,7 @@ struct DashboardView: View {
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var dashboardViewModel = DashboardViewModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -32,6 +33,23 @@ struct DashboardView: View {
                         memberRow(row)
                     }
                 }
+
+                if !dashboardViewModel.isLoading && dashboardViewModel.rows.isEmpty && dashboardViewModel.errorMessage == nil {
+                    VStack(spacing: 8) {
+                        Image(systemName: "person.2")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text("No members yet")
+                            .font(.headline)
+                        Text("Invite others to your group")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
+                    .listRowSeparator(.hidden)
+                }
             }
             .navigationTitle("Sharing")
             .toolbar {
@@ -47,6 +65,11 @@ struct DashboardView: View {
             }
             .task {
                 await refresh()
+            }
+            .onChange(of: scenePhase) { newPhase in
+                if newPhase == .active {
+                    Task { await refresh() }
+                }
             }
             .overlay {
                 if dashboardViewModel.isLoading && dashboardViewModel.rows.isEmpty {

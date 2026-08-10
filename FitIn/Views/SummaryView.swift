@@ -13,6 +13,7 @@ struct SummaryView: View {
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = SummaryViewModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -76,6 +77,11 @@ struct SummaryView: View {
             }
             .task {
                 await refresh()
+            }
+            .onChange(of: scenePhase) { newPhase in
+                if newPhase == .active {
+                    Task { await refresh() }
+                }
             }
             .overlay {
                 if viewModel.isLoading && viewModel.stepsSparkline.isEmpty {
