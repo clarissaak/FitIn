@@ -70,9 +70,13 @@ final class DashboardViewModel: ObservableObject {
             }
             .sorted { $0.displayName < $1.displayName }
         } catch {
+            if (error as NSError).code == NSURLErrorCancelled || error is CancellationError {
+                isLoading = false
+                return
+            }
             errorMessage = "Couldn't refresh. Pull down to try again."
         }
 
         isLoading = false
-    }
+    } 
 }

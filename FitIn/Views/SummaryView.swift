@@ -14,6 +14,7 @@ struct SummaryView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = SummaryViewModel()
     @Environment(\.scenePhase) private var scenePhase
+    @State private var isShowingAccount = false
 
     var body: some View {
         NavigationStack {
@@ -31,7 +32,7 @@ struct SummaryView: View {
                         let email = currentUser.email ?? ""
 
                         NavigationLink {
-                            TrendsView(email: email, displayName: "My Trends", spreadsheetId: spreadsheetId, focusMetric: .steps)
+                            TrendsView(email: email, spreadsheetId: spreadsheetId, focusMetric: .steps)
                         } label: {
                             SummaryMetricWidget(
                                 icon: "figure.walk",
@@ -46,7 +47,7 @@ struct SummaryView: View {
                         .buttonStyle(.plain)
 
                         NavigationLink {
-                            TrendsView(email: email, displayName: "My Trends", spreadsheetId: spreadsheetId, focusMetric: .heartRate)
+                            TrendsView(email: email, spreadsheetId: spreadsheetId, focusMetric: .heartRate)
                         } label: {
                             SummaryMetricWidget(
                                 icon: "heart.fill",
@@ -63,14 +64,9 @@ struct SummaryView: View {
                 }
                 .padding()
             }
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink("Goals") {
-                        GoalSettingView()
-                    }
-                }
+            .navigationBarHidden(true)
+            .sheet(isPresented: $isShowingAccount) {
+                AccountView()
             }
             .refreshable {
                 await refresh()
@@ -92,12 +88,24 @@ struct SummaryView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(Self.dateHeaderFormatter.string(from: Date()))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text("Summary")
-                .font(.largeTitle.bold())
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Self.dateHeaderFormatter.string(from: Date()))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text("Summary")
+                    .font(.largeTitle.bold())
+            }
+
+            Spacer()
+
+            Button {
+                isShowingAccount = true
+            } label: {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.title)
+            }
+            .padding(.top, 4)
         }
     }
 

@@ -50,7 +50,10 @@ final class HealthKitService {
     // MARK: - Today's steps
 
     // Returns the cumulative step count for the current day, using the
-    // device's local calendar to define "today".
+    // device's local calendar to define "today". If there are no step
+    // samples yet for today (e.g. right after midnight), HealthKit's
+    // HKStatisticsQuery reports this as an error rather than a zero sum —
+    // that specific case is treated as 0 steps rather than a failure.
     func todaysSteps() async throws -> Double {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw HealthKitError.notAvailableOnDevice
@@ -73,7 +76,15 @@ final class HealthKitService {
                 options: .cumulativeSum
             ) { _, statistics, error in
                 if let error {
-                    continuation.resume(throwing: HealthKitError.queryFailed(error))
+                    let nsError = error as NSError
+                    // HKError.Code.errorNoData (11): no samples exist yet for
+                    // the predicate's range. That's a legitimate "0 steps so
+                    // far today", not a real failure.
+                    if nsError.domain == HKErrorDomain, nsError.code == HKError.Code.errorNoData.rawValue {
+                        continuation.resume(returning: 0)
+                    } else {
+                        continuation.resume(throwing: HealthKitError.queryFailed(error))
+                    }
                     return
                 }
 

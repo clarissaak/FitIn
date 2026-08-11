@@ -76,6 +76,15 @@ final class SummaryViewModel: ObservableObject {
             stepsSparkline = recentPoints(from: allSteps.filter { $0.email == email }.map { ($0.date, Double($0.steps)) })
             heartRateSparkline = recentPoints(from: allHeartRate.filter { $0.email == email }.map { ($0.date, $0.elevatedHRMinutes) })
         } catch {
+            // A cancelled request (e.g. from SwiftUI's .task being torn down
+            // and restarted during normal view lifecycle changes) isn't a
+            // real failure — the next refresh will succeed. Don't show it
+            // as an error.
+            if (error as NSError).code == NSURLErrorCancelled || error is CancellationError {
+                isLoading = false
+                return
+            }
+            print("SummaryViewModel refresh error: \(error)")
             errorMessage = "Couldn't refresh. Pull down to try again."
         }
 

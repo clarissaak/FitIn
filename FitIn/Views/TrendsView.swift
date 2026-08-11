@@ -18,7 +18,7 @@ struct TrendsView: View {
     }
 
     let email: String
-    let displayName: String
+    var displayName: String = ""
     let spreadsheetId: String
     // nil shows both metrics (used for viewing another member's trends).
     // A specific metric shows just that one, in more detail (used when
