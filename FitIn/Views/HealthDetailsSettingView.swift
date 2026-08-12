@@ -1,19 +1,27 @@
 //
-//  BirthDateSettingView.swift
+//  HealthDetailsSettingView.swift
 //  FitIn
 //
 //  Created by Clarissa Kristanto on 7/29/26.
 //
 import SwiftUI
 
-// Shown once, during onboarding, to collect the user's birth date. Checks
-// the user's existing row first — if a birth date is already saved, this
-// view completes immediately without showing any UI.
-struct BirthDateSettingView: View {
+// Shown once, during onboarding, to collect the user's birth date, sex,
+// height, and weight. Checks the user's existing row first — if a birth
+// date is already saved, this view completes immediately without showing
+// any UI.
+struct HealthDetailsSettingView: View {
     let spreadsheetId: String
     var onComplete: () -> Void
 
+    private let sexOptions = ["Female", "Male", "Other"]
+
     @State private var birthDate = Date()
+    @State private var sex = ""
+    @State private var heightFeet = 5
+    @State private var heightRemainderInches = 6
+    @State private var weightLbs: Double = 150
+
     @State private var isChecking = true
     @State private var isSaving = false
     @State private var errorMessage: String?
@@ -23,59 +31,63 @@ struct BirthDateSettingView: View {
             if isChecking {
                 ProgressView()
             } else {
-                VStack(spacing: 24) {
-                    Spacer()
-
-                    VStack(spacing: 8) {
-                        Text("When's your birthday?")
+                Form {
+                    Section {
+                        Text("Tell us about yourself")
                             .font(.title2.bold())
-                        Text("Used to personalize your heart rate goal range. Stored once, never asked again.")
+                        Text("Used to personalize your goals and heart rate range. Stored once, editable later from your account.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
                     }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
 
-                    DatePicker(
-                        "Birth date",
-                        selection: $birthDate,
-                        in: ...Date(),
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.wheel)
-                    .labelsHidden()
-                    .padding(.horizontal, 32)
+                    Section {
+                        DatePicker("Birth Date", selection: $birthDate, in: ...Date(), displayedComponents: .date)
+
+                        Picker("Sex", selection: $sex) {
+                            Text("Not Set").tag("")
+                            ForEach(sexOptions, id: \.self) { option in
+                                Text(option).tag(option)
+                            }
+                        }
+
+                        Stepper("Height: \(heightFeet) ft \(heightRemainderInches) in", value: $heightFeet, in: 3...7)
+
+                        Stepper("Adjust inches: \(heightRemainderInches)", value: $heightRemainderInches, in: 0...11)
+
+                        Stepper("Weight: \(Int(weightLbs)) lb", value: $weightLbs, in: 50...400, step: 1)
+                    }
 
                     if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                    }
-
-                    Button {
-                        save()
-                    } label: {
-                        if isSaving {
-                            ProgressView().frame(maxWidth: .infinity)
-                        } else {
-                            Text("Continue").frame(maxWidth: .infinity)
+                        Section {
+                            Text(errorMessage)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
                         }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .padding(.horizontal, 32)
-                    .disabled(isSaving)
 
-                    Spacer()
+                    Section {
+                        Button {
+                            save()
+                        } label: {
+                            if isSaving {
+                                ProgressView().frame(maxWidth: .infinity)
+                            } else {
+                                Text("Continue").frame(maxWidth: .infinity)
+                            }
+                        }
+                        .disabled(isSaving)
+                    }
                 }
-                .padding()
             }
         }
         .task {
-            await checkExistingBirthDate()
+            await checkExistingHealthDetails()
         }
     }
 
-    private func checkExistingBirthDate() async {
+    private func checkExistingHealthDetails() async {
         guard let email = GoogleAuthService.shared.currentUser?.email else {
             isChecking = false
             return
@@ -108,6 +120,8 @@ struct BirthDateSettingView: View {
                 let existingUsers = try await SheetsService.shared.fetchUsers(spreadsheetId: spreadsheetId)
                 let existing = existingUsers.first(where: { $0.email == email })
 
+                let totalHeightInches = Double(heightFeet * 12 + heightRemainderInches)
+
                 let updatedUser = User(
                     email: email,
                     name: existing?.name ?? currentUser.name ?? "unknown",
@@ -116,7 +130,10 @@ struct BirthDateSettingView: View {
                     birthDate: SheetsService.dateFormatter.string(from: birthDate),
                     stepsGoal: existing?.stepsGoal ?? User.defaultStepsGoal,
                     heartRateGoal: existing?.heartRateGoal ?? User.defaultHeartRateGoal,
-                    elevatedMinutesGoal: existing?.elevatedMinutesGoal ?? User.defaultElevatedMinutesGoal
+                    elevatedMinutesGoal: existing?.elevatedMinutesGoal ?? User.defaultElevatedMinutesGoal,
+                    sex: sex,
+                    heightInches: totalHeightInches,
+                    weightLbs: weightLbs
                 )
                 try await SheetsService.shared.appendOrUpdateUser(spreadsheetId: spreadsheetId, user: updatedUser)
                 isSaving = false
@@ -130,5 +147,5 @@ struct BirthDateSettingView: View {
 }
 
 #Preview {
-    BirthDateSettingView(spreadsheetId: "preview", onComplete: {})
+    HealthDetailsSettingView(spreadsheetId: "preview", onComplete: {})
 }

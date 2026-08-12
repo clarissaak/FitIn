@@ -7,10 +7,10 @@
 import Foundation
 
 // Represents one row in the "Users" sheet tab, including each user's
-// personal goals: a daily step target, the heart rate threshold they're
-// tracking, and how many minutes above that threshold they're aiming for.
-// Age is derived from the stored birth date rather than saved directly,
-// so it stays correct automatically once a birthday passes.
+// health details and personal goals. Age is derived from the stored
+// birth date rather than saved directly, so it stays correct
+// automatically once a birthday passes. Sex, height, and weight are
+// optional — empty/zero until the user fills them in via Health Details.
 struct User: Identifiable, Equatable {
     var id: String { email }
     let email: String
@@ -21,17 +21,29 @@ struct User: Identifiable, Equatable {
     var stepsGoal: Int
     var heartRateGoal: Int // BPM threshold
     var elevatedMinutesGoal: Double // minutes per day above heartRateGoal
+    var sex: String // "Female" / "Male" / "Other", empty if not yet provided
+    var heightInches: Double // 0 if not yet provided
+    var weightLbs: Double // 0 if not yet provided
 
     static let defaultStepsGoal = 10_000
     static let defaultHeartRateGoal = 120
     static let defaultElevatedMinutesGoal: Double = 30
 
     // Column order as written to/read from the "Users" tab:
-    // Email, Name, Sub, JoinedDate, BirthDate, StepsGoal, HeartRateGoal, ElevatedMinutesGoal
-    static let headerRow = ["Email", "Name", "Sub", "JoinedDate", "BirthDate", "StepsGoal", "HeartRateGoal", "ElevatedMinutesGoal"]
+    // Email, Name, Sub, JoinedDate, BirthDate, StepsGoal, HeartRateGoal,
+    // ElevatedMinutesGoal, Sex, HeightInches, WeightLbs
+    static let headerRow = [
+        "Email", "Name", "Sub", "JoinedDate", "BirthDate",
+        "StepsGoal", "HeartRateGoal", "ElevatedMinutesGoal",
+        "Sex", "HeightInches", "WeightLbs"
+    ]
 
     var asRow: [String] {
-        [email, name, sub, joinedDate, birthDate, String(stepsGoal), String(heartRateGoal), String(elevatedMinutesGoal)]
+        [
+            email, name, sub, joinedDate, birthDate,
+            String(stepsGoal), String(heartRateGoal), String(elevatedMinutesGoal),
+            sex, String(heightInches), String(weightLbs)
+        ]
     }
 
     // Current age computed from birthDate, or nil if birthDate hasn't
@@ -46,13 +58,16 @@ struct User: Identifiable, Equatable {
     }
 
     // Builds a user from a raw row returned by the Sheets API. Falls back
-    // to defaults / empty birth date if the row predates these columns.
+    // to defaults / empty values if the row predates these columns.
     static func from(row: [String]) -> User? {
         guard row.count >= 4 else { return nil }
         let birthDate = row.count > 4 ? row[4] : ""
         let stepsGoal = row.count > 5 ? (Int(row[5]) ?? defaultStepsGoal) : defaultStepsGoal
         let heartRateGoal = row.count > 6 ? (Int(row[6]) ?? defaultHeartRateGoal) : defaultHeartRateGoal
         let elevatedMinutesGoal = row.count > 7 ? (Double(row[7]) ?? defaultElevatedMinutesGoal) : defaultElevatedMinutesGoal
+        let sex = row.count > 8 ? row[8] : ""
+        let heightInches = row.count > 9 ? (Double(row[9]) ?? 0) : 0
+        let weightLbs = row.count > 10 ? (Double(row[10]) ?? 0) : 0
         return User(
             email: row[0],
             name: row[1],
@@ -61,12 +76,16 @@ struct User: Identifiable, Equatable {
             birthDate: birthDate,
             stepsGoal: stepsGoal,
             heartRateGoal: heartRateGoal,
-            elevatedMinutesGoal: elevatedMinutesGoal
+            elevatedMinutesGoal: elevatedMinutesGoal,
+            sex: sex,
+            heightInches: heightInches,
+            weightLbs: weightLbs
         )
     }
 
     // Convenience for creating a brand-new user row with default goals
-    // and no birth date yet (collected during onboarding).
+    // and no health details yet (collected during onboarding / Health
+    // Details screen).
     static func newUser(email: String, name: String, sub: String, joinedDate: String) -> User {
         User(
             email: email,
@@ -76,7 +95,10 @@ struct User: Identifiable, Equatable {
             birthDate: "",
             stepsGoal: defaultStepsGoal,
             heartRateGoal: defaultHeartRateGoal,
-            elevatedMinutesGoal: defaultElevatedMinutesGoal
+            elevatedMinutesGoal: defaultElevatedMinutesGoal,
+            sex: "",
+            heightInches: 0,
+            weightLbs: 0
         )
     }
 }

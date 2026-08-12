@@ -79,7 +79,8 @@ final class GoalViewModel: ObservableObject {
     }
 
     // Saves the current goal values to the signed-in user's row in the
-    // Users tab, keeping their existing name/sub/joinedDate/birthDate intact.
+    // Users tab, keeping their existing name/sub/joinedDate/birthDate and
+    // health details (sex/height/weight) intact.
     func saveGoals(spreadsheetId: String) async {
         errorMessage = nil
         isSaving = true
@@ -100,7 +101,10 @@ final class GoalViewModel: ObservableObject {
                 birthDate: existing?.birthDate ?? "",
                 stepsGoal: stepsGoal,
                 heartRateGoal: heartRateGoal,
-                elevatedMinutesGoal: elevatedMinutesGoal
+                elevatedMinutesGoal: elevatedMinutesGoal,
+                sex: existing?.sex ?? "",
+                heightInches: existing?.heightInches ?? 0,
+                weightLbs: existing?.weightLbs ?? 0
             )
             try await sheetsService.appendOrUpdateUser(spreadsheetId: spreadsheetId, user: updatedUser)
         } catch {

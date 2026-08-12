@@ -52,7 +52,7 @@ private struct RootView: View {
             } else if !groupSetupViewModel.hasGroup {
                 GroupSetupView()
             } else if !hasHandledBirthDate, let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
-                BirthDateSettingView(spreadsheetId: spreadsheetId) {
+                HealthDetailsSettingView(spreadsheetId: spreadsheetId) {
                     hasHandledBirthDate = true
                 }
             } else {
