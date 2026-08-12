@@ -12,6 +12,7 @@ import SwiftUI
 struct DashboardView: View {
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var notificationPreferences: NotificationPreferencesStore
     @StateObject private var dashboardViewModel = DashboardViewModel()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -41,7 +42,7 @@ struct DashboardView: View {
                             .foregroundStyle(.secondary)
                         Text("No members yet")
                             .font(.headline)
-                        Text("Invite others to your group")
+                        Text("Invite others to your group from the Debug screen's shareable link, or pull down to refresh.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -82,6 +83,10 @@ struct DashboardView: View {
     private func refresh() async {
         guard let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId else { return }
         await dashboardViewModel.refresh(spreadsheetId: spreadsheetId)
+        await NotificationService.shared.rescheduleMissedGoalNotifications(
+            rows: dashboardViewModel.rows,
+            preferences: notificationPreferences
+        )
     }
 
     private func memberRow(_ row: Dashboard) -> some View {

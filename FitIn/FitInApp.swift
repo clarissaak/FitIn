@@ -11,12 +11,14 @@ import GoogleSignIn
 struct FitInApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var groupSetupViewModel = GroupSetupViewModel()
+    @StateObject private var notificationPreferences = NotificationPreferencesStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(authViewModel)
                 .environmentObject(groupSetupViewModel)
+                .environmentObject(notificationPreferences)
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)
                 }

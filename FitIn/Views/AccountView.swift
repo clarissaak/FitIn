@@ -4,13 +4,10 @@
 //
 //  Created by Clarissa Kristanto on 8/10/26.
 //
-
-
 import SwiftUI
 
-// Presented as a sheet from the account icon: shows the signed-in
-// account, lets the user edit their birth date, links to Goals, and
-// holds notification preferences.
+// Presented as a sheet from the account icon: account info, health
+// details + goals, notification settings, and sign out
 struct AccountView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
@@ -20,26 +17,19 @@ struct AccountView: View {
     @State private var isLoadingBirthDate = true
     @State private var isSavingBirthDate = false
     @State private var birthDateErrorMessage: String?
-
-    // Notification preferences are stored locally for now — this is a
-    // placeholder for the goal-reminder notifications feature, which
-    // isn't built yet (needs local notification scheduling separately).
-    @AppStorage("notifyOnMissedGoals") private var notifyOnMissedGoals = false
+    @State private var isShowingSignOutConfirmation = false
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Account") {
+                Section {
                     if let user = authViewModel.currentUser {
                         LabeledContent("Name", value: user.name ?? "—")
                         LabeledContent("Email", value: user.email ?? "—")
                     }
-                    Button("Sign Out", role: .destructive) {
-                        authViewModel.signOut()
-                        dismiss()
-                    }
                 }
 
+                // Health details + goals section
                 Section {
                     if isLoadingBirthDate {
                         ProgressView()
@@ -61,22 +51,22 @@ struct AccountView: View {
                             .font(.footnote)
                             .foregroundStyle(.red)
                     }
-                } header: {
-                    Text("Health Details")
-                } footer: {
-                    Text("Used to personalize your heart rate goal range.")
-                }
 
-                Section("Goals") {
                     NavigationLink("Change Goals") {
                         GoalSettingView()
                     }
                 }
 
                 Section {
-                    Toggle("Missed Goals", isOn: $notifyOnMissedGoals)
-                } header: {
-                    Text("Notifications")
+                    NavigationLink("Notifications") {
+                        NotificationSettingsView()
+                    }
+                }
+
+                Section {
+                    Button("Sign Out", role: .destructive) {
+                        isShowingSignOutConfirmation = true
+                    }
                 }
             }
             .navigationTitle("Account")
@@ -85,6 +75,17 @@ struct AccountView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .confirmationDialog(
+                "Sign out of FitIn?",
+                isPresented: $isShowingSignOutConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Sign Out", role: .destructive) {
+                    authViewModel.signOut()
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
             }
         }
         .task {
