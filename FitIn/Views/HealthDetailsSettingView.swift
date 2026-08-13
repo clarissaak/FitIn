@@ -16,11 +16,18 @@ struct HealthDetailsSettingView: View {
 
     private let sexOptions = ["Female", "Male", "Other"]
 
+    private enum ActiveField {
+        case height
+        case weight
+    }
+
     @State private var birthDate = Date()
     @State private var sex = ""
     @State private var heightFeet = 5
-    @State private var heightRemainderInches = 6
-    @State private var weightLbs: Double = 150
+    @State private var heightInches = 6
+    @State private var weight = 150
+
+    @State private var activeField: ActiveField? = nil
 
     @State private var isChecking = true
     @State private var isSaving = false
@@ -31,60 +38,126 @@ struct HealthDetailsSettingView: View {
             if isChecking {
                 ProgressView()
             } else {
-                Form {
-                    Section {
-                        Text("Tell us about yourself")
-                            .font(.title2.bold())
-                        Text("Used to personalize your goals and heart rate range. Stored once, editable later from your account.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-
-                    Section {
-                        DatePicker("Birth Date", selection: $birthDate, in: ...Date(), displayedComponents: .date)
-
-                        Picker("Sex", selection: $sex) {
-                            Text("Not Set").tag("")
-                            ForEach(sexOptions, id: \.self) { option in
-                                Text(option).tag(option)
-                            }
-                        }
-
-                        Stepper("Height: \(heightFeet) ft \(heightRemainderInches) in", value: $heightFeet, in: 3...7)
-
-                        Stepper("Adjust inches: \(heightRemainderInches)", value: $heightRemainderInches, in: 0...11)
-
-                        Stepper("Weight: \(Int(weightLbs)) lb", value: $weightLbs, in: 50...400, step: 1)
-                    }
-
-                    if let errorMessage {
+                VStack(spacing: 0) {
+                    Form {
                         Section {
-                            Text(errorMessage)
-                                .font(.footnote)
-                                .foregroundStyle(.red)
+                            Text("Tell us about yourself")
+                                .font(.title2.bold())
+                            Text("Used to personalize your goals and heart rate range. Stored once, editable later from your account.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+
+                        Section {
+                            DatePicker("Birth Date", selection: $birthDate, in: ...Date(), displayedComponents: .date)
+
+                            Picker("Sex", selection: $sex) {
+                                Text("Not Set").tag("")
+                                ForEach(sexOptions, id: \.self) { option in
+                                    Text(option).tag(option)
+                                }
+                            }
+                        }
+
+                        Section {
+                            Button {
+                                selectField(.height)
+                            } label: {
+                                LabeledContent("Height", value: "\(heightFeet) ft \(heightInches) in")
+                            }
+                            .foregroundStyle(.primary)
+
+                            Button {
+                                selectField(.weight)
+                            } label: {
+                                LabeledContent("Weight", value: "\(weight) lb")
+                            }
+                            .foregroundStyle(.primary)
+                        }
+
+                        if let errorMessage {
+                            Section {
+                                Text(errorMessage)
+                                    .font(.footnote)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+
+                        Section {
+                            Button {
+                                save()
+                            } label: {
+                                if isSaving {
+                                    ProgressView().frame(maxWidth: .infinity)
+                                } else {
+                                    Text("Continue").frame(maxWidth: .infinity)
+                                }
+                            }
+                            .disabled(isSaving)
                         }
                     }
 
-                    Section {
-                        Button {
-                            save()
-                        } label: {
-                            if isSaving {
-                                ProgressView().frame(maxWidth: .infinity)
-                            } else {
-                                Text("Continue").frame(maxWidth: .infinity)
+                    if let activeField {
+                        Divider()
+                        Group {
+                            switch activeField {
+                            case .height:
+                                heightWheel
+                            case .weight:
+                                weightWheel
                             }
                         }
-                        .disabled(isSaving)
+                        .frame(height: 220)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
+                .animation(.default, value: activeField)
             }
         }
         .task {
             await checkExistingHealthDetails()
         }
+    }
+
+    private func selectField(_ field: ActiveField) {
+        // Tapping the already-open field collapses the wheel; tapping the
+        // other field swaps to it.
+        activeField = (activeField == field) ? nil : field
+    }
+
+    // Height wheel: feet | inches, edits the bound values live as it spins.
+    private var heightWheel: some View {
+        HStack(spacing: 0) {
+            Picker("Feet", selection: $heightFeet) {
+                ForEach(3...7, id: \.self) { value in
+                    Text("\(value) ft").tag(value)
+                }
+            }
+            .pickerStyle(.wheel)
+
+            Picker("Inches", selection: $heightInches) {
+                ForEach(0...11, id: \.self) { value in
+                    Text("\(value) in").tag(value)
+                }
+            }
+            .pickerStyle(.wheel)
+        }
+        .labelsHidden()
+        .padding(.top, 8)
+    }
+
+    // Weight wheel: single lb column, edits the bound value live as it spins.
+    private var weightWheel: some View {
+        Picker("Weight", selection: $weight) {
+            ForEach(50...400, id: \.self) { value in
+                Text("\(value) lb").tag(value)
+            }
+        }
+        .pickerStyle(.wheel)
+        .labelsHidden()
+        .padding(.top, 8)
     }
 
     private func checkExistingHealthDetails() async {
@@ -120,7 +193,7 @@ struct HealthDetailsSettingView: View {
                 let existingUsers = try await SheetsService.shared.fetchUsers(spreadsheetId: spreadsheetId)
                 let existing = existingUsers.first(where: { $0.email == email })
 
-                let totalHeightInches = Double(heightFeet * 12 + heightRemainderInches)
+                let totalHeightInches = Double(heightFeet * 12 + heightInches)
 
                 let updatedUser = User(
                     email: email,
@@ -133,7 +206,7 @@ struct HealthDetailsSettingView: View {
                     elevatedMinutesGoal: existing?.elevatedMinutesGoal ?? User.defaultElevatedMinutesGoal,
                     sex: sex,
                     heightInches: totalHeightInches,
-                    weightLbs: weightLbs
+                    weightLbs: Double(weight)
                 )
                 try await SheetsService.shared.appendOrUpdateUser(spreadsheetId: spreadsheetId, user: updatedUser)
                 isSaving = false

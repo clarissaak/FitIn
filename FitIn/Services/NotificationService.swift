@@ -20,8 +20,8 @@ final class NotificationService {
     private init() {}
 
     private let center = UNUserNotificationCenter.current()
-    private let reminderHour = 20 // 8 PM local time
-
+    private let reminderHour = 22 // 10 PM local time
+    private let reminderMinute = 00
     // Requests permission to show notifications. Safe to call repeatedly —
     // iOS only prompts once; afterward this just reports the current status.
     @discardableResult
@@ -46,7 +46,7 @@ final class NotificationService {
 
         guard preferences.allEnabled else { return }
 
-        guard let triggerDate = Self.reminderDate(hour: reminderHour), triggerDate > Date() else {
+        guard let triggerDate = Self.reminderDate(hour: reminderHour, minute: reminderMinute), triggerDate > Date() else {
             return // Already past reminder time today — nothing more to schedule.
         }
 
@@ -79,7 +79,7 @@ final class NotificationService {
         return parts.joined(separator: " · ")
     }
 
-    private static func reminderDate(hour: Int) -> Date? {
-        Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date())
+    private static func reminderDate(hour: Int, minute: Int) -> Date? {
+        Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: Date())
     }
 }
