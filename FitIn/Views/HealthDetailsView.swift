@@ -101,7 +101,7 @@ struct HealthDetailsView: View {
                     }
                 }
                 .frame(height: 220)
-                .background(Color(.systemGroupedBackground))
+                .background(Color(.systemBackground))
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }

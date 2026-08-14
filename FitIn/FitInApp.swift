@@ -35,13 +35,18 @@ struct FitInApp: App {
 private struct RootView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
-    @State private var hasHandledHealthPermission = false
+
+    // Backed by UserDefaults instead of plain @State, so once a user has
+    // gotten past the health permission screen during onboarding, it
+    // stays skipped on every future app launch rather than resetting
+    // each time RootView is re-created.
+    @AppStorage("hasCompletedHealthPermissionOnboarding") private var hasHandledHealthPermission = false
     @State private var hasHandledBirthDate = false
 
     var body: some View {
         switch authViewModel.state {
         case .checkingSession:
-            ProgressView()
+            LaunchLoadingView()
         case .signedOut:
             SignInView()
         case .signedIn:
