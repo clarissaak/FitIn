@@ -30,6 +30,13 @@ struct TrendsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
+                Picker("Range", selection: $viewModel.selectedRange) {
+                    ForEach(TrendsViewModel.TimeRange.allCases) { range in
+                        Text(range.rawValue).tag(range)
+                    }
+                }
+                .pickerStyle(.segmented)
+
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
                         .font(.footnote)

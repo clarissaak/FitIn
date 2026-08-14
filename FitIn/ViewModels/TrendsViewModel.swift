@@ -9,7 +9,8 @@ import Combine
 
 // Loads one member's full history of steps and elevated heart rate
 // minutes, alongside their goals, and computes a simple trend direction
-// for each metric (improving / declining / steady).
+// for each metric (improving / declining / steady) within the currently
+// selected time range.
 @MainActor
 final class TrendsViewModel: ObservableObject {
 
@@ -20,15 +21,46 @@ final class TrendsViewModel: ObservableObject {
         case notEnoughData
     }
 
-    @Published private(set) var stepsPoints: [TrendPoint] = []
-    @Published private(set) var heartRatePoints: [TrendPoint] = []
+    enum TimeRange: String, CaseIterable, Identifiable {
+        case week = "W"
+        case month = "M"
+        case sixMonths = "6M"
+        case year = "Y"
+
+        var id: String { rawValue }
+
+        var dayCount: Int {
+            switch self {
+            case .week: return 7
+            case .month: return 30
+            case .sixMonths: return 182
+            case .year: return 365
+            }
+        }
+    }
+
+    @Published var selectedRange: TimeRange = .week
+
     @Published private(set) var stepGoal = User.defaultStepsGoal
     @Published private(set) var elevatedMinutesGoal = User.defaultElevatedMinutesGoal
 
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    // Full, unfiltered history — loaded once. stepsPoints / heartRatePoints
+    // below are what the view actually reads, filtered to selectedRange.
+    private var allStepsPoints: [TrendPoint] = []
+    private var allHeartRatePoints: [TrendPoint] = []
+
     private let sheetsService = SheetsService.shared
+
+    var stepsPoints: [TrendPoint] {
+        filtered(allStepsPoints)
+    }
+
+    var heartRatePoints: [TrendPoint] {
+        filtered(allHeartRatePoints)
+    }
 
     var stepsTrend: Trend {
         trend(for: stepsPoints)
@@ -52,7 +84,7 @@ final class TrendsViewModel: ObservableObject {
             let allSteps = try await sheetsService.fetchAllSteps(spreadsheetId: spreadsheetId)
             let allHeartRate = try await sheetsService.fetchAllHeartRate(spreadsheetId: spreadsheetId)
 
-            stepsPoints = allSteps
+            allStepsPoints = allSteps
                 .filter { $0.email == email }
                 .compactMap { entry -> TrendPoint? in
                     guard let date = SheetsService.dateFormatter.date(from: entry.date) else { return nil }
@@ -60,7 +92,7 @@ final class TrendsViewModel: ObservableObject {
                 }
                 .sorted { $0.date < $1.date }
 
-            heartRatePoints = allHeartRate
+            allHeartRatePoints = allHeartRate
                 .filter { $0.email == email }
                 .compactMap { entry -> TrendPoint? in
                     guard let date = SheetsService.dateFormatter.date(from: entry.date) else { return nil }
@@ -74,10 +106,17 @@ final class TrendsViewModel: ObservableObject {
         isLoading = false
     }
 
+    private func filtered(_ points: [TrendPoint]) -> [TrendPoint] {
+        guard let cutoff = Calendar.current.date(byAdding: .day, value: -selectedRange.dayCount, to: Date()) else {
+            return points
+        }
+        return points.filter { $0.date >= cutoff }
+    }
+
     // Simple trend heuristic: compares the average of the first half of
-    // points against the second half. Needs at least 4 points to say
-    // anything more specific than "not enough data" — fewer than that
-    // is too noisy to call a real trend.
+    // points against the second half, within the selected range. Needs
+    // at least 4 points to say anything more specific than "not enough
+    // data" — fewer than that is too noisy to call a real trend.
     private func trend(for points: [TrendPoint]) -> Trend {
         guard points.count >= 4 else { return .notEnoughData }
 
