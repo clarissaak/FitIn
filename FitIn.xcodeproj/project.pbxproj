@@ -424,12 +424,13 @@
 				CODE_SIGN_ENTITLEMENTS = FitIn/FitIn.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JL68R4K65C;
+				DEVELOPMENT_TEAM = SH8VPD23M7;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FitIn/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "F!tIn";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "FitIn reads your activity and workout data to share your fitness progress with other users.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -446,7 +447,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = clarissakristanto.fitin;
+				PRODUCT_BUNDLE_IDENTIFIER = raynerk.fitin;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -471,12 +472,13 @@
 				CODE_SIGN_ENTITLEMENTS = FitIn/FitIn.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JL68R4K65C;
+				DEVELOPMENT_TEAM = SH8VPD23M7;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FitIn/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "F!tIn";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "FitIn reads your activity and workout data to share your fitness progress with other users.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -493,7 +495,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = clarissakristanto.fitin;
+				PRODUCT_BUNDLE_IDENTIFIER = raynerk.fitin;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;

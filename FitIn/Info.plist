@@ -2,13 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIImageName</key>
-		<string></string>
-	</dict>
-	<key>Image Name</key>
-	<string>AppLogo</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>FitIn reads your steps and heart rate to track your progress toward your goals and keep your group updated.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>FitIn does not write any data to Health.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -22,5 +19,12 @@
 	</array>
 	<key>GIDClientID</key>
 	<string>425520278628-s533uubkefgl1jd2kj0ji98i1clmd367.apps.googleusercontent.com</string>
+	<key>Image Name</key>
+	<string>AppLogo</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIImageName</key>
+		<string></string>
+	</dict>
 </dict>
 </plist>

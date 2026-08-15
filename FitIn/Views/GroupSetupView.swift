@@ -10,9 +10,11 @@ import SwiftUI
 // out) or join an existing group by pasting a code.
 struct GroupSetupView: View {
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
+    @EnvironmentObject var authViewModel: AuthViewModel
 
     @State private var groupName: String = ""
     @State private var mode: Mode = .create
+    @State private var isShowingSignOutConfirmation = false
 
     enum Mode: String, CaseIterable {
         case create = "Create"
@@ -48,8 +50,26 @@ struct GroupSetupView: View {
             }
 
             Spacer()
+
+            // Debugging aid: lets a tester sign out from this screen
+            // directly, without needing to already be in a group to
+            // reach AccountView's sign-out option.
+            Button("Sign Out", role: .destructive) {
+                isShowingSignOutConfirmation = true
+            }
+            .font(.footnote)
         }
         .padding(.bottom, 32)
+        .confirmationDialog(
+            "Sign out?",
+            isPresented: $isShowingSignOutConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Sign Out", role: .destructive) {
+                authViewModel.signOut()
+            }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 
     private var createSection: some View {
@@ -105,4 +125,5 @@ struct GroupSetupView: View {
 #Preview {
     GroupSetupView()
         .environmentObject(GroupSetupViewModel())
+        .environmentObject(AuthViewModel())
 }
