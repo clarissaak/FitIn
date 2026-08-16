@@ -20,8 +20,9 @@ final class NotificationService {
     private init() {}
 
     private let center = UNUserNotificationCenter.current()
-    private let reminderHour = 22 // 10 PM local time
-    private let reminderMinute = 00
+    private let reminderHour = 21 // 9:30 PM local time
+    private let reminderMinute = 30
+
     // Requests permission to show notifications. Safe to call repeatedly —
     // iOS only prompts once; afterward this just reports the current status.
     @discardableResult
@@ -37,7 +38,10 @@ final class NotificationService {
         let today = SheetsService.dateFormatter.string(from: Date())
 
         // Clear out any previously scheduled notifications for today before
-        // adding fresh ones — avoids duplicates as data changes throughout the day.
+        // adding fresh ones — avoids duplicates as data changes throughout
+        // the day, and also handles the case where the user just turned
+        // notifications off (nothing new gets scheduled below, but this
+        // still cancels anything already pending).
         let pending = await center.pendingNotificationRequests()
         let todaysIdentifiers = pending
             .map(\.identifier)
@@ -45,6 +49,18 @@ final class NotificationService {
         center.removePendingNotificationRequests(withIdentifiers: todaysIdentifiers)
 
         guard preferences.allEnabled else { return }
+
+        // The master toggle defaults to on, so the settings screen's
+        // onChange (which normally triggers the permission prompt) may
+        // never fire. Check status directly and request here if needed —
+        // otherwise notifications can be "scheduled" but never delivered.
+        let settings = await center.notificationSettings()
+        if settings.authorizationStatus == .notDetermined {
+            let granted = await requestAuthorization()
+            guard granted else { return }
+        } else if settings.authorizationStatus == .denied {
+            return
+        }
 
         guard let triggerDate = Self.reminderDate(hour: reminderHour, minute: reminderMinute), triggerDate > Date() else {
             return // Already past reminder time today — nothing more to schedule.

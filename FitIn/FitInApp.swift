@@ -30,18 +30,16 @@ struct FitInApp: App {
     }
 }
 
-// Switches between sign-in, health permission, group setup, birth date
-// onboarding, and the main dashboard based on current state.
+// Switches between sign-in, health permission, group setup, health
+// details, notification permission, and the main app based on current
+// state. Each onboarding step's "handled" flag is persisted via
+// @AppStorage so it only shows once ever, not on every launch.
 private struct RootView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
-
-    // Backed by UserDefaults instead of plain @State, so once a user has
-    // gotten past the health permission screen during onboarding, it
-    // stays skipped on every future app launch rather than resetting
-    // each time RootView is re-created.
-    @AppStorage("hasCompletedHealthPermissionOnboarding") private var hasHandledHealthPermission = false
-    @State private var hasHandledBirthDate = false
+    @AppStorage("hasHandledHealthPermission") private var hasHandledHealthPermission = false
+    @State private var hasHandledHealthDetails = false
+    @AppStorage("hasHandledNotificationPermission") private var hasHandledNotificationPermission = false
 
     var body: some View {
         switch authViewModel.state {
@@ -56,9 +54,13 @@ private struct RootView: View {
                 }
             } else if !groupSetupViewModel.hasGroup {
                 GroupSetupView()
-            } else if !hasHandledBirthDate, let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
+            } else if !hasHandledHealthDetails, let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
                 HealthDetailsSettingView(spreadsheetId: spreadsheetId) {
-                    hasHandledBirthDate = true
+                    hasHandledHealthDetails = true
+                }
+            } else if !hasHandledNotificationPermission {
+                NotificationPermissionView {
+                    hasHandledNotificationPermission = true
                 }
             } else {
                 NavBarView()
