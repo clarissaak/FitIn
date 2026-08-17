@@ -31,14 +31,16 @@ struct FitInApp: App {
 }
 
 // Switches between sign-in, health permission, group setup, health
-// details, notification permission, and the main app based on current
-// state. Each onboarding step's "handled" flag is persisted via
-// @AppStorage so it only shows once ever, not on every launch.
+// details, goal setting, notification permission, and the main app
+// based on current state. Each onboarding step's "handled" flag is
+// persisted via @AppStorage so it only shows once ever, not on every
+// launch.
 private struct RootView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
     @AppStorage("hasHandledHealthPermission") private var hasHandledHealthPermission = false
     @State private var hasHandledHealthDetails = false
+    @AppStorage("hasHandledGoalSetting") private var hasHandledGoalSetting = false
     @AppStorage("hasHandledNotificationPermission") private var hasHandledNotificationPermission = false
 
     var body: some View {
@@ -57,6 +59,12 @@ private struct RootView: View {
             } else if !hasHandledHealthDetails, let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
                 HealthDetailsSettingView(spreadsheetId: spreadsheetId) {
                     hasHandledHealthDetails = true
+                }
+            } else if !hasHandledGoalSetting {
+                NavigationStack {
+                    GoalSettingView {
+                        hasHandledGoalSetting = true
+                    }
                 }
             } else if !hasHandledNotificationPermission {
                 NotificationPermissionView {

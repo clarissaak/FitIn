@@ -9,10 +9,14 @@ import SwiftUI
 // Lets the user set their three goals: daily step count, the heart rate
 // threshold they're tracking, and how many minutes above that threshold
 // they're aiming for each day. The heart rate threshold's range is based
-// on the user's age (via Health app date of birth) when available.
+// on the user's age (via birth date) when available.
+//
+// Used both from Account (pushed onto a NavigationStack, no onComplete)
+// and during onboarding (shown directly, with onComplete to advance).
 struct GoalSettingView: View {
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
     @StateObject private var goalViewModel = GoalViewModel()
+    var onComplete: (() -> Void)? = nil
 
     var body: some View {
         Form {
@@ -61,13 +65,16 @@ struct GoalSettingView: View {
                     Task {
                         if let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
                             await goalViewModel.saveGoals(spreadsheetId: spreadsheetId)
+                            if goalViewModel.errorMessage == nil {
+                                onComplete?()
+                            }
                         }
                     }
                 } label: {
                     if goalViewModel.isSaving {
                         ProgressView().frame(maxWidth: .infinity)
                     } else {
-                        Text("Save Goals").frame(maxWidth: .infinity)
+                        Text(onComplete != nil ? "Continue" : "Save Goals").frame(maxWidth: .infinity)
                     }
                 }
                 .disabled(goalViewModel.isSaving || goalViewModel.isLoading)

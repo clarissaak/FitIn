@@ -20,7 +20,7 @@ final class NotificationService {
     private init() {}
 
     private let center = UNUserNotificationCenter.current()
-    private let reminderHour = 21 // 9:30 PM local time
+    private let reminderHour = 22 //10:30 PM local time
     private let reminderMinute = 30
 
     // Requests permission to show notifications. Safe to call repeatedly —
