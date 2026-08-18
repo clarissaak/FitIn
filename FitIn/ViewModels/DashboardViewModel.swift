@@ -19,7 +19,6 @@ final class DashboardViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let sheetsService = SheetsService.shared
-    private let healthKitService = HealthKitService.shared
 
     func refresh(spreadsheetId: String) async {
         guard !isLoading else { return }
@@ -27,31 +26,10 @@ final class DashboardViewModel: ObservableObject {
         errorMessage = nil
         isLoading = true
 
+        await DailyUploadCoordinator.shared.uploadTodayIfNeeded(spreadsheetId: spreadsheetId)
+
         do {
-            guard let currentUser = GoogleAuthService.shared.currentUser else {
-                isLoading = false
-                return
-            }
-            let email = currentUser.email ?? "unknown"
-
-            // Need the current user's own heart rate threshold before
-            // querying HealthKit, since the threshold is per-user.
             let users = try await sheetsService.fetchUsers(spreadsheetId: spreadsheetId)
-            let myThreshold = users.first(where: { $0.email == email })?.heartRateGoal ?? User.defaultHeartRateGoal
-
-            let stepCount = try await healthKitService.todaysSteps()
-            let elevatedMinutes = try await healthKitService.elevatedHeartRateMinutesToday(threshold: Double(myThreshold))
-
-            let today = SheetsService.dateFormatter.string(from: Date())
-
-            try await sheetsService.upsertTodaySteps(
-                spreadsheetId: spreadsheetId,
-                steps: DailySteps(date: today, email: email, steps: Int(stepCount))
-            )
-            try await sheetsService.upsertTodayHeartRate(
-                spreadsheetId: spreadsheetId,
-                metric: DailyHeartRate(date: today, email: email, elevatedHRMinutes: elevatedMinutes)
-            )
 
             let stepsToday = try await sheetsService.fetchTodaySteps(spreadsheetId: spreadsheetId)
             let heartRateToday = try await sheetsService.fetchTodayHeartRate(spreadsheetId: spreadsheetId)
@@ -78,5 +56,5 @@ final class DashboardViewModel: ObservableObject {
         }
 
         isLoading = false
-    } 
+    }
 }

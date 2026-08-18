@@ -84,19 +84,23 @@ final class TrendsViewModel: ObservableObject {
             let allSteps = try await sheetsService.fetchAllSteps(spreadsheetId: spreadsheetId)
             let allHeartRate = try await sheetsService.fetchAllHeartRate(spreadsheetId: spreadsheetId)
 
-            allStepsPoints = allSteps
-                .filter { $0.email == email }
-                .compactMap { entry -> TrendPoint? in
-                    guard let date = SheetsService.dateFormatter.date(from: entry.date) else { return nil }
-                    return TrendPoint(dateString: entry.date, date: date, value: Double(entry.steps))
+            let mySteps = allSteps.filter { $0.email == email }
+            var stepsByDate: [String: Int] = [:]
+            for entry in mySteps { stepsByDate[entry.date] = entry.steps }
+            allStepsPoints = stepsByDate
+                .compactMap { dateString, steps -> TrendPoint? in
+                    guard let date = SheetsService.dateFormatter.date(from: dateString) else { return nil }
+                    return TrendPoint(dateString: dateString, date: date, value: Double(steps))
                 }
                 .sorted { $0.date < $1.date }
 
-            allHeartRatePoints = allHeartRate
-                .filter { $0.email == email }
-                .compactMap { entry -> TrendPoint? in
-                    guard let date = SheetsService.dateFormatter.date(from: entry.date) else { return nil }
-                    return TrendPoint(dateString: entry.date, date: date, value: entry.elevatedHRMinutes)
+            let myHeartRate = allHeartRate.filter { $0.email == email }
+            var heartRateByDate: [String: Double] = [:]
+            for entry in myHeartRate { heartRateByDate[entry.date] = entry.elevatedHRMinutes }
+            allHeartRatePoints = heartRateByDate
+                .compactMap { dateString, minutes -> TrendPoint? in
+                    guard let date = SheetsService.dateFormatter.date(from: dateString) else { return nil }
+                    return TrendPoint(dateString: dateString, date: date, value: minutes)
                 }
                 .sorted { $0.date < $1.date }
         } catch {
