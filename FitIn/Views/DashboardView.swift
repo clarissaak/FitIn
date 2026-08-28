@@ -15,51 +15,55 @@ struct DashboardView: View {
     @EnvironmentObject var notificationPreferences: NotificationPreferencesStore
     @StateObject private var dashboardViewModel = DashboardViewModel()
     @Environment(\.scenePhase) private var scenePhase
+    @State private var isShowingGroupSettings = false
 
     var body: some View {
         NavigationStack {
             List {
+                header
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+
                 if let errorMessage = dashboardViewModel.errorMessage {
                     Text(errorMessage)
                         .font(.footnote)
                         .foregroundStyle(.red)
+                        .listRowBackground(Color.clear)
                 }
 
-                ForEach(dashboardViewModel.rows) { row in
-                    NavigationLink {
-                        if let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
-                            TrendsView(email: row.email, displayName: row.displayName, spreadsheetId: spreadsheetId)
+                Section {
+                    ForEach(dashboardViewModel.rows) { row in
+                        NavigationLink {
+                            if let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
+                                TrendsView(email: row.email, displayName: row.displayName, spreadsheetId: spreadsheetId)
+                            }
+                        } label: {
+                            memberRow(row)
                         }
-                    } label: {
-                        memberRow(row)
                     }
-                }
 
-                if !dashboardViewModel.isLoading && dashboardViewModel.rows.isEmpty && dashboardViewModel.errorMessage == nil {
-                    VStack(spacing: 8) {
-                        Image(systemName: "person.2")
-                            .font(.largeTitle)
-                            .foregroundStyle(.secondary)
-                        Text("No members yet")
-                            .font(.headline)
-                        Text("Invite others to your group from the Debug screen's shareable link, or pull down to refresh.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
+                    if !dashboardViewModel.isLoading && dashboardViewModel.rows.isEmpty && dashboardViewModel.errorMessage == nil {
+                        VStack(spacing: 8) {
+                            Image(systemName: "person.2")
+                                .font(.largeTitle)
+                                .foregroundStyle(.secondary)
+                            Text("No members yet")
+                                .font(.headline)
+                            Text("Invite others to your group, or pull down to refresh.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 32)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 32)
-                    .listRowSeparator(.hidden)
                 }
             }
-            .navigationTitle("Sharing")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink("Debug") {
-                        SheetsTestView()
-                    }
-                    .font(.footnote)
-                }
+            .compactListSectionSpacingIfAvailable()
+            .navigationBarHidden(true)
+            .sheet(isPresented: $isShowingGroupSettings) {
+                GroupSettingsView()
             }
             .refreshable {
                 await refresh()
@@ -72,10 +76,21 @@ struct DashboardView: View {
                     Task { await refresh() }
                 }
             }
-            .overlay {
-                if dashboardViewModel.isLoading && dashboardViewModel.rows.isEmpty {
-                    ProgressView()
-                }
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .bottom) {
+            Text("Sharing")
+                .font(.largeTitle.bold())
+
+            Spacer()
+
+            Button {
+                isShowingGroupSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.title)
             }
         }
     }
@@ -143,4 +158,18 @@ struct DashboardView: View {
     DashboardView()
         .environmentObject(GroupSetupViewModel())
         .environmentObject(AuthViewModel())
+        .environmentObject(NotificationPreferencesStore())
+}
+
+private extension View {
+    // .listSectionSpacing is iOS 17+; this no-ops on iOS 16 rather than
+    // failing to compile, since the app's deployment target is 16.
+    @ViewBuilder
+    func compactListSectionSpacingIfAvailable() -> some View {
+        if #available(iOS 17.0, *) {
+            self.listSectionSpacing(.compact)
+        } else {
+            self
+        }
+    }
 }
