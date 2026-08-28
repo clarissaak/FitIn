@@ -7,12 +7,16 @@
 import SwiftUI
 
 // Presented as a sheet from the account icon: account info, health
-// details + goals, notification settings, and sign out.
+// details + goals, notification settings, group management (creator
+// only), and sign out — styled after Apple Fitness's account/profile
+// screen.
 struct AccountView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var isShowingSignOutConfirmation = false
+    @State private var isCreator = false
 
     var body: some View {
         NavigationStack {
@@ -24,7 +28,8 @@ struct AccountView: View {
                     }
                 }
 
-                // Health details + goals together
+                // Health details + goals together, matching Fitness's
+                // account layout.
                 Section {
                     NavigationLink("Health Details") {
                         HealthDetailsView()
@@ -32,13 +37,27 @@ struct AccountView: View {
                     NavigationLink("Edit Goals") {
                         GoalSettingView()
                     }
+                } header: {
+                    Text("Health Details & Goals")
                 }
 
                 Section {
                     NavigationLink("Notifications") {
                         NotificationSettingsView()
                     }
-                } 
+                } header: {
+                    Text("Notifications")
+                }
+
+                if isCreator {
+                    Section {
+                        NavigationLink("Pending Requests") {
+                            PendingRequestsView()
+                        }
+                    } header: {
+                        Text("Group Management")
+                    }
+                }
 
                 Section {
                     Button("Sign Out", role: .destructive) {
@@ -63,6 +82,11 @@ struct AccountView: View {
                     dismiss()
                 }
                 Button("Cancel", role: .cancel) {}
+            }
+        }
+        .task {
+            if let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
+                isCreator = await GroupService.shared.isCurrentUserCreator(spreadsheetId: spreadsheetId)
             }
         }
     }

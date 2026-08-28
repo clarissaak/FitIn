@@ -24,17 +24,17 @@ struct FitInApp: App {
                 }
                 .task {
                     await authViewModel.restoreSessionIfAvailable()
-                    groupSetupViewModel.restoreGroupIfAvailable()
+                    await groupSetupViewModel.restoreGroupIfAvailable()
                 }
         }
     }
 }
 
-// Switches between sign-in, health permission, group setup, health
-// details, goal setting, notification permission, and the main app
-// based on current state. Each onboarding step's "handled" flag is
-// persisted via @AppStorage so it only shows once ever, not on every
-// launch.
+// Switches between sign-in, health permission, group setup, awaiting
+// approval, health details, goal setting, notification permission, and
+// the main app based on current state. Each onboarding step's "handled"
+// flag is persisted via @AppStorage so it only shows once ever, not on
+// every launch.
 private struct RootView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
@@ -56,6 +56,8 @@ private struct RootView: View {
                 }
             } else if !groupSetupViewModel.hasGroup {
                 GroupSetupView()
+            } else if groupSetupViewModel.isPendingApproval {
+                AwaitingApprovalView()
             } else if !hasHandledHealthDetails, let spreadsheetId = groupSetupViewModel.currentGroup?.spreadsheetId {
                 HealthDetailsSettingView(spreadsheetId: spreadsheetId) {
                     hasHandledHealthDetails = true

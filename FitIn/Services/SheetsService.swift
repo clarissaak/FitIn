@@ -8,8 +8,9 @@ import Foundation
 
 // Wraps the Google Sheets v4 REST API and the Drive v3 permissions endpoint
 // needed to create and share a group's backing spreadsheet, and to read/
-// write Users, Steps, and HeartRate data. All requests are authenticated
-// with the current user's Google access token as a Bearer token.
+// write Users, Steps, HeartRate, and join-Requests data. All requests are
+// authenticated with the current user's Google access token as a Bearer
+// token.
 @MainActor
 final class SheetsService {
 
@@ -63,8 +64,9 @@ final class SheetsService {
 
     // MARK: - Create spreadsheet
 
-    // Creates a new spreadsheet with "Users", "Steps", and "HeartRate" tabs,
-    // writes their header rows, and returns the new spreadsheet's ID.
+    // Creates a new spreadsheet with "Users", "Steps", "HeartRate",
+    // "Requests", and "Meta" tabs, writes their header rows, and returns
+    // the new spreadsheet's ID.
     func createSpreadsheet(name: String) async throws -> String {
         guard let url = URL(string: sheetsBase) else { throw SheetsError.invalidURL }
 
@@ -73,7 +75,9 @@ final class SheetsService {
             "sheets": [
                 ["properties": ["title": "Users"]],
                 ["properties": ["title": "Steps"]],
-                ["properties": ["title": "HeartRate"]]
+                ["properties": ["title": "HeartRate"]],
+                ["properties": ["title": "Requests"]],
+                ["properties": ["title": "Meta"]]
             ]
         ]
 
@@ -105,6 +109,11 @@ final class SheetsService {
             range: "HeartRate!A1:C1",
             values: [DailyHeartRate.headerRow]
         )
+        try await updateRange(
+            spreadsheetId: spreadsheetId,
+            range: "Requests!A1:D1",
+            values: [JoinRequest.headerRow]
+        )
     }
 
     // MARK: - Share
@@ -120,6 +129,74 @@ final class SheetsService {
         ]
         let request = try await authorizedRequest(url: url, method: "POST", jsonBody: body)
         _ = try await perform(request)
+    }
+
+    // MARK: - Meta (creator tracking)
+
+    // Records who created the group. Called once, right after the
+    // spreadsheet is created. Used to gate who can approve/reject join
+    // requests.
+    func setCreatorEmail(spreadsheetId: String, email: String) async throws {
+        try await updateRange(
+            spreadsheetId: spreadsheetId,
+            range: "Meta!A1:B1",
+            values: [["CreatorEmail", email]]
+        )
+    }
+
+    // Returns the group creator's email, or nil if not set.
+    func fetchCreatorEmail(spreadsheetId: String) async throws -> String? {
+        let rows = try await fetchRawValues(spreadsheetId: spreadsheetId, range: "Meta!A1:B1")
+        guard let row = rows.first, row.count >= 2, row[0] == "CreatorEmail" else {
+            return nil
+        }
+        return row[1]
+    }
+
+    // MARK: - Join Requests
+
+    // Submits a join request, unless one is already pending for this
+    // email (avoids duplicate requests from repeated taps).
+    func submitJoinRequest(spreadsheetId: String, request: JoinRequest) async throws {
+        let existing = try await fetchJoinRequests(spreadsheetId: spreadsheetId)
+        guard !existing.contains(where: { $0.email == request.email }) else { return }
+        try await appendRange(
+            spreadsheetId: spreadsheetId,
+            range: "Requests!A:D",
+            values: [request.asRow]
+        )
+    }
+
+    // Fetches all pending join requests.
+    func fetchJoinRequests(spreadsheetId: String) async throws -> [JoinRequest] {
+        let rows = try await fetchRawValues(spreadsheetId: spreadsheetId, range: "Requests!A2:D")
+        return rows.compactMap { JoinRequest.from(row: $0) }
+    }
+
+    // Approves a join request: adds the requester as a full member with
+    // default goals, then clears their row from Requests.
+    func approveJoinRequest(spreadsheetId: String, request: JoinRequest) async throws {
+        let newUser = User.newUser(
+            email: request.email,
+            name: request.name,
+            sub: request.sub,
+            joinedDate: Self.dateFormatter.string(from: Date())
+        )
+        try await appendOrUpdateUser(spreadsheetId: spreadsheetId, user: newUser)
+        try await clearJoinRequestRow(spreadsheetId: spreadsheetId, email: request.email)
+    }
+
+    // Rejects a join request: just clears their row from Requests,
+    // without adding them as a member.
+    func rejectJoinRequest(spreadsheetId: String, request: JoinRequest) async throws {
+        try await clearJoinRequestRow(spreadsheetId: spreadsheetId, email: request.email)
+    }
+
+    private func clearJoinRequestRow(spreadsheetId: String, email: String) async throws {
+        let rows = try await fetchRawValues(spreadsheetId: spreadsheetId, range: "Requests!A2:D")
+        guard let index = rows.firstIndex(where: { $0.first == email }) else { return }
+        let rowNumber = index + 2
+        try await clearRange(spreadsheetId: spreadsheetId, range: "Requests!A\(rowNumber):D\(rowNumber)")
     }
 
     // MARK: - Users
@@ -262,6 +339,20 @@ final class SheetsService {
         }
         let body: [String: Any] = ["values": values]
         let request = try await authorizedRequest(url: url, method: "POST", jsonBody: body)
+        _ = try await perform(request)
+    }
+
+    // Clears the values in a range without deleting the row itself —
+    // simpler than a true row-delete (which requires knowing the tab's
+    // internal numeric sheetId via a separate metadata call). A cleared
+    // row is treated as absent by JoinRequest.from(row:), which skips
+    // rows with an empty email.
+    private func clearRange(spreadsheetId: String, range: String) async throws {
+        guard let encodedRange = range.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let url = URL(string: "\(sheetsBase)/\(spreadsheetId)/values/\(encodedRange):clear") else {
+            throw SheetsError.invalidURL
+        }
+        let request = try await authorizedRequest(url: url, method: "POST", jsonBody: [:])
         _ = try await perform(request)
     }
 }

@@ -6,15 +6,14 @@
 //
 import SwiftUI
 
-// Lets the user create a new group (and see the shareable code to hand
-// out) or join an existing group by pasting a code.
+// Lets the user create a new group, or request to join an existing
+// group by pasting a code/link. Joining requires the creator's
+// approval — see AwaitingApprovalView for what happens next.
 struct GroupSetupView: View {
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
-    @EnvironmentObject var authViewModel: AuthViewModel
 
     @State private var groupName: String = ""
     @State private var mode: Mode = .create
-    @State private var isShowingSignOutConfirmation = false
 
     enum Mode: String, CaseIterable {
         case create = "Create"
@@ -50,26 +49,8 @@ struct GroupSetupView: View {
             }
 
             Spacer()
-
-            // Debugging aid: lets a tester sign out from this screen
-            // directly, without needing to already be in a group to
-            // reach AccountView's sign-out option.
-            Button("Sign Out", role: .destructive) {
-                isShowingSignOutConfirmation = true
-            }
-            .font(.footnote)
         }
         .padding(.bottom, 32)
-        .confirmationDialog(
-            "Sign out?",
-            isPresented: $isShowingSignOutConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Sign Out", role: .destructive) {
-                authViewModel.signOut()
-            }
-            Button("Cancel", role: .cancel) {}
-        }
     }
 
     private var createSection: some View {
@@ -105,25 +86,27 @@ struct GroupSetupView: View {
 
             Button {
                 Task {
-                    await groupSetupViewModel.joinGroup()
+                    await groupSetupViewModel.requestToJoinGroup()
                 }
             } label: {
                 if groupSetupViewModel.isBusy {
                     ProgressView().frame(maxWidth: .infinity)
                 } else {
-                    Text("Join Group").frame(maxWidth: .infinity)
+                    Text("Request to Join").frame(maxWidth: .infinity)
                 }
             }
             .buttonStyle(.borderedProminent)
             .padding(.horizontal, 32)
             .disabled(groupSetupViewModel.isBusy)
+
+            Text("The group creator will need to approve your request.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
-
 }
 
 #Preview {
     GroupSetupView()
         .environmentObject(GroupSetupViewModel())
-        .environmentObject(AuthViewModel())
 }
