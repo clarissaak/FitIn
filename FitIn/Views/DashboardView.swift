@@ -20,16 +20,38 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             List {
-                header
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-
                 if let errorMessage = dashboardViewModel.errorMessage {
                     Text(errorMessage)
                         .font(.footnote)
                         .foregroundStyle(.red)
                         .listRowBackground(Color.clear)
+                }
+
+                if !dashboardViewModel.weeklyStepsPoints.isEmpty || !dashboardViewModel.weeklyHeartRatePoints.isEmpty {
+                    Section {
+                        VStack(alignment: .leading, spacing: 20) {
+                            MemberComparisonChart(
+                                title: "Steps",
+                                icon: "figure.walk",
+                                unit: "Steps",
+                                points: dashboardViewModel.weeklyStepsPoints
+                            )
+
+                            Divider()
+
+                            MemberComparisonChart(
+                                title: "Elevated Heart Rate",
+                                icon: "heart.fill",
+                                unit: "Minutes",
+                                points: dashboardViewModel.weeklyHeartRatePoints
+                            )
+                        }
+                        .padding()
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                    }
                 }
 
                 Section {
@@ -60,8 +82,17 @@ struct DashboardView: View {
                     }
                 }
             }
-            .compactListSectionSpacingIfAvailable()
-            .navigationBarHidden(true)
+            .listSectionSpacing(.compact)
+            .navigationTitle("Sharing")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingGroupSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                }
+            }
             .sheet(isPresented: $isShowingGroupSettings) {
                 GroupSettingsView()
             }
@@ -71,26 +102,10 @@ struct DashboardView: View {
             .task {
                 await refresh()
             }
-            .onChange(of: scenePhase) { newPhase in
+            .onChange(of: scenePhase) { oldPhase, newPhase in
                 if newPhase == .active {
                     Task { await refresh() }
                 }
-            }
-        }
-    }
-
-    private var header: some View {
-        HStack(alignment: .bottom) {
-            Text("Sharing")
-                .font(.largeTitle.bold())
-
-            Spacer()
-
-            Button {
-                isShowingGroupSettings = true
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.title)
             }
         }
     }
@@ -159,17 +174,4 @@ struct DashboardView: View {
         .environmentObject(GroupSetupViewModel())
         .environmentObject(AuthViewModel())
         .environmentObject(NotificationPreferencesStore())
-}
-
-private extension View {
-    // .listSectionSpacing is iOS 17+; this no-ops on iOS 16 rather than
-    // failing to compile, since the app's deployment target is 16.
-    @ViewBuilder
-    func compactListSectionSpacingIfAvailable() -> some View {
-        if #available(iOS 17.0, *) {
-            self.listSectionSpacing(.compact)
-        } else {
-            self
-        }
-    }
 }

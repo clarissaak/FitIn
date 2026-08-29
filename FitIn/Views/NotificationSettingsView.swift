@@ -20,7 +20,7 @@ struct NotificationSettingsView: View {
         Form {
             Section {
                 Toggle("Missed Goals", isOn: $preferences.allEnabled)
-                    .onChange(of: preferences.allEnabled) { newValue in
+                    .onChange(of: preferences.allEnabled) { oldValue, newValue in
                         if newValue {
                             Task { await NotificationService.shared.requestAuthorization() }
                         }

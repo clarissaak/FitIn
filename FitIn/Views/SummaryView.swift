@@ -8,7 +8,7 @@ import SwiftUI
 
 // The Summary tab: today's date, then a widget card per metric (Steps,
 // Elevated Heart Rate Minutes), each with today's progress and a small
-// recent-history sparkline. Styled after Apple Fitness's Summary tab.
+// recent-history sparkline. 
 struct SummaryView: View {
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -21,6 +21,7 @@ struct SummaryView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     header
+                        .padding(.top, 12)
 
                     if let errorMessage = viewModel.errorMessage {
                         Text(errorMessage)
@@ -74,7 +75,7 @@ struct SummaryView: View {
             .task {
                 await refresh()
             }
-            .onChange(of: scenePhase) { newPhase in
+            .onChange(of: scenePhase) { oldPhase, newPhase in
                 if newPhase == .active {
                     Task { await refresh() }
                 }
@@ -105,7 +106,7 @@ struct SummaryView: View {
                 Image(systemName: "person.crop.circle.fill")
                     .font(.title)
             }
-            .padding(.top, 4)
+            .padding(.top, 8)
         }
     }
 
