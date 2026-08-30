@@ -31,8 +31,9 @@ struct DashboardView: View {
                     Section {
                         VStack(alignment: .leading, spacing: 20) {
                             MemberComparisonChart(
-                                title: "Steps",
                                 icon: "figure.walk",
+                                title: "Steps",
+                                color: .green,
                                 unit: "Steps",
                                 points: dashboardViewModel.weeklyStepsPoints
                             )
@@ -40,12 +41,12 @@ struct DashboardView: View {
                             Divider()
 
                             MemberComparisonChart(
-                                title: "Elevated Heart Rate",
                                 icon: "heart.fill",
+                                title: "Elevated Heart Rate",
+                                color: .red,
                                 unit: "Minutes",
                                 points: dashboardViewModel.weeklyHeartRatePoints
-                            )
-                        }
+                            )                        }
                         .padding()
                         .background(Color(.secondarySystemGroupedBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12))

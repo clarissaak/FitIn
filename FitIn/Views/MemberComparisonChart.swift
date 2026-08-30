@@ -10,15 +10,21 @@ import SwiftUI
 // One metric's chart in the group comparison card: one line (with point
 // markers) per member, colored by name, over the trailing 7-day window.
 struct MemberComparisonChart: View {
-    let title: String
     let icon: String
+    let title: String
+    let color: Color
     let unit: String
     let points: [MemberTrendPoint]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: icon)
-                .font(.headline)
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .foregroundStyle(color)
+                Text(title)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+            }
 
             if points.isEmpty {
                 Text("No data yet.")
