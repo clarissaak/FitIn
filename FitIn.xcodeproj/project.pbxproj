@@ -431,7 +431,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FitIn/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "F!tIn";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "FitIn reads your activity and workout data to share your fitness progress with other users.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "FitIn reads your steps and heart rate to track your progress toward your goals and keep your group updated.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "FitIn does not write any data to Health.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -479,7 +480,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FitIn/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "F!tIn";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "FitIn reads your activity and workout data to share your fitness progress with other users.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "FitIn reads your steps and heart rate to track your progress toward your goals and keep your group updated.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "FitIn does not write any data to Health.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

@@ -47,25 +47,61 @@ final class HealthKitService {
         try await healthStore.requestAuthorization(toShare: [], read: typesToRead)
     }
 
-    // MARK: - Today's steps
+    // MARK: - Background delivery
 
-    // Returns the cumulative step count for the current day, using the
-    // device's local calendar to define "today". If there are no step
-    // samples yet for today (e.g. right after midnight), HealthKit's
-    // HKStatisticsQuery reports this as an error rather than a zero sum —
-    // that specific case is treated as 0 steps rather than a failure.
+    // Enables HealthKit background delivery for steps and heart rate, so
+    // iOS can relaunch the app shortly after new data is written (e.g.
+    // right after a Watch sync). Requires authorization to already be
+    // granted — safe to call repeatedly otherwise.
+    func enableBackgroundDelivery() async {
+        _ = try? await healthStore.enableBackgroundDelivery(for: stepCountType, frequency: .immediate)
+        _ = try? await healthStore.enableBackgroundDelivery(for: heartRateType, frequency: .immediate)
+    }
+
+    // Registers observer queries for steps and heart rate; `onChange`
+    // fires whenever new data of either type is written, including when
+    // iOS relaunches the app in the background specifically to deliver
+    // this. Must be called on every launch (including background
+    // relaunches) — HealthKit persists the background-delivery setting,
+    // but not the observer query itself across process launches.
+    func startObservingHealthChanges(onChange: @escaping () async -> Void) {
+        for sampleType in [stepCountType, heartRateType] {
+            let query = HKObserverQuery(sampleType: sampleType, predicate: nil) { _, completionHandler, error in
+                guard error == nil else {
+                    completionHandler()
+                    return
+                }
+                Task {
+                    await onChange()
+                    completionHandler()
+                }
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    // MARK: - Steps
+
+    // Returns the cumulative step count for the current day. Thin wrapper
+    // around steps(on:) for today, kept so existing call sites don't need
+    // to change.
     func todaysSteps() async throws -> Double {
+        try await steps(on: Date())
+    }
+
+    // Returns the cumulative step count for the given day, clamped to
+    // "now" if `date` is today. Missing samples (e.g. right after
+    // midnight) are treated as 0 rather than an error.
+    func steps(on date: Date) async throws -> Double {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw HealthKitError.notAvailableOnDevice
         }
 
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: Date())
-        let now = Date()
+        let (start, end) = Self.dayBounds(for: date)
 
         let predicate = HKQuery.predicateForSamples(
-            withStart: startOfDay,
-            end: now,
+            withStart: start,
+            end: end,
             options: .strictStartDate
         )
 
@@ -77,9 +113,6 @@ final class HealthKitService {
             ) { _, statistics, error in
                 if let error {
                     let nsError = error as NSError
-                    // HKError.Code.errorNoData (11): no samples exist yet for
-                    // the predicate's range. That's a legitimate "0 steps so
-                    // far today", not a real failure.
                     if nsError.domain == HKErrorDomain, nsError.code == HKError.Code.errorNoData.rawValue {
                         continuation.resume(returning: 0)
                     } else {
@@ -96,27 +129,28 @@ final class HealthKitService {
         }
     }
 
-    // MARK: - Today's elevated heart rate minutes
+    // MARK: - Elevated heart rate minutes
 
-    // Returns the approximate number of minutes today where heart rate was
-    // above `threshold` BPM. Heart rate samples are discrete points in time,
-    // not continuous, so this is an estimate: for each pair of consecutive
-    // samples where the earlier sample's value is above threshold, the gap
-    // between them is counted as elevated time, capped at `maxGapMinutes`
-    // per pair so a long stretch without a reading (e.g. watch removed)
-    // doesn't get counted as elevated.
+    // Returns elevated minutes for today. Thin wrapper around
+    // elevatedHeartRateMinutes(on:threshold:maxGapMinutes:).
     func elevatedHeartRateMinutesToday(threshold: Double = 120, maxGapMinutes: Double = 5) async throws -> Double {
+        try await elevatedHeartRateMinutes(on: Date(), threshold: threshold, maxGapMinutes: maxGapMinutes)
+    }
+
+    // Estimates minutes above `threshold` BPM on the given day, by summing
+    // gaps between consecutive samples where the earlier sample is above
+    // threshold, capped at `maxGapMinutes` per gap so missing readings
+    // (e.g. watch removed) aren't counted as elevated.
+    func elevatedHeartRateMinutes(on date: Date, threshold: Double = 120, maxGapMinutes: Double = 5) async throws -> Double {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw HealthKitError.notAvailableOnDevice
         }
 
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: Date())
-        let now = Date()
+        let (start, end) = Self.dayBounds(for: date)
 
         let predicate = HKQuery.predicateForSamples(
-            withStart: startOfDay,
-            end: now,
+            withStart: start,
+            end: end,
             options: .strictStartDate
         )
 
@@ -155,5 +189,15 @@ final class HealthKitService {
         }
 
         return elevatedMinutes
+    }
+
+    // Returns (start, end) for `date`'s local calendar day, clamped to
+    // "now" if `date` is today.
+    private static func dayBounds(for date: Date) -> (start: Date, end: Date) {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let startOfNextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+        let end = min(startOfNextDay, Date())
+        return (startOfDay, end)
     }
 }

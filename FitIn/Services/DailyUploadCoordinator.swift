@@ -6,12 +6,13 @@
 //
 import Foundation
 
-// Uploads today's HealthKit data (steps + elevated heart rate minutes) to
-// Sheets. Both SummaryView and DashboardView trigger refreshes that each
-// want to do this upload — without coordination, two near-simultaneous
-// calls can both read "no row for today yet" and both append, creating
-// duplicate rows. This coordinator serializes uploads: if one is already
-// in flight, callers await that same one instead of starting a new one.
+// Uploads HealthKit data (steps + elevated heart rate minutes) to Sheets.
+// Foreground refreshes (SummaryView, DashboardView) upload just today;
+// the background task uploads the last several days, so a day the app
+// wasn't opened still gets backfilled once a sync does happen.
+//
+// Single-flight per spreadsheetId: an upload already in progress is
+// awaited instead of duplicated, to avoid racing duplicate rows.
 @MainActor
 final class DailyUploadCoordinator {
 
@@ -22,17 +23,23 @@ final class DailyUploadCoordinator {
     private var inFlightTask: Task<Void, Never>?
     private var inFlightSpreadsheetId: String?
 
-    // Uploads today's steps + elevated heart rate minutes for the current
-    // user, if no upload for this spreadsheet is already running. Safe to
-    // call from multiple views without risking duplicate rows.
+    // Uploads just today's data. Called by SummaryView/DashboardView on
+    // every appear/refresh.
     func uploadTodayIfNeeded(spreadsheetId: String) async {
+        await uploadRecentDaysIfNeeded(spreadsheetId: spreadsheetId, dayCount: 1)
+    }
+
+    // Uploads the last `dayCount` days (today back through dayCount - 1
+    // days ago), overwriting any existing rows for those dates. Called by
+    // the background refresh task to catch up on days that were missed.
+    func uploadRecentDaysIfNeeded(spreadsheetId: String, dayCount: Int) async {
         if let inFlightTask, inFlightSpreadsheetId == spreadsheetId {
             await inFlightTask.value
             return
         }
 
         let task = Task {
-            await Self.performUpload(spreadsheetId: spreadsheetId)
+            await Self.performUpload(spreadsheetId: spreadsheetId, dayCount: dayCount)
         }
         inFlightTask = task
         inFlightSpreadsheetId = spreadsheetId
@@ -43,7 +50,7 @@ final class DailyUploadCoordinator {
         inFlightSpreadsheetId = nil
     }
 
-    private static func performUpload(spreadsheetId: String) async {
+    private static func performUpload(spreadsheetId: String, dayCount: Int) async {
         guard let currentUser = GoogleAuthService.shared.currentUser else { return }
         let email = currentUser.email ?? "unknown"
 
@@ -51,23 +58,31 @@ final class DailyUploadCoordinator {
             let users = try await SheetsService.shared.fetchUsers(spreadsheetId: spreadsheetId)
             let threshold = users.first(where: { $0.email == email })?.heartRateGoal ?? User.defaultHeartRateGoal
 
-            let stepCount = try await HealthKitService.shared.todaysSteps()
-            let elevatedMinutes = try await HealthKitService.shared.elevatedHeartRateMinutesToday(threshold: Double(threshold))
+            let calendar = Calendar.current
+            let startOfToday = calendar.startOfDay(for: Date())
 
-            let today = SheetsService.dateFormatter.string(from: Date())
+            // Sequential, not parallel, to avoid hammering the Sheets API
+            // with concurrent read-before-write requests.
+            for daysAgo in 0..<dayCount {
+                guard let day = calendar.date(byAdding: .day, value: -daysAgo, to: startOfToday) else { continue }
 
-            try await SheetsService.shared.upsertTodaySteps(
-                spreadsheetId: spreadsheetId,
-                steps: DailySteps(date: today, email: email, steps: Int(stepCount))
-            )
-            try await SheetsService.shared.upsertTodayHeartRate(
-                spreadsheetId: spreadsheetId,
-                metric: DailyHeartRate(date: today, email: email, elevatedHRMinutes: elevatedMinutes)
-            )
+                let stepCount = try await HealthKitService.shared.steps(on: day)
+                let elevatedMinutes = try await HealthKitService.shared.elevatedHeartRateMinutes(on: day, threshold: Double(threshold))
+
+                let dateString = SheetsService.dateFormatter.string(from: day)
+
+                try await SheetsService.shared.upsertTodaySteps(
+                    spreadsheetId: spreadsheetId,
+                    steps: DailySteps(date: dateString, email: email, steps: Int(stepCount))
+                )
+                try await SheetsService.shared.upsertTodayHeartRate(
+                    spreadsheetId: spreadsheetId,
+                    metric: DailyHeartRate(date: dateString, email: email, elevatedHRMinutes: elevatedMinutes)
+                )
+            }
         } catch {
-            // Upload failures here are non-fatal — each view's own refresh
-            // will still show whatever was already on the sheet, and the
-            // next successful upload will catch up.
+            // Non-fatal — views still show whatever's already on the
+            // sheet, and the next successful upload will catch up.
         }
     }
 }

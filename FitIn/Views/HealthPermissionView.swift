@@ -10,10 +10,6 @@ import SwiftUI
 // permission sheet. Present this before relying on step data elsewhere
 // in the app.
 struct HealthPermissionView: View {
-    // Called after an authorization attempt completes (successfully or not).
-    // The caller decides how to proceed — HealthKit's read-authorization
-    // status can't be introspected precisely, so success here just means
-    // the system sheet was presented and dismissed without throwing.
     var onAuthorizationHandled: () -> Void
 
     @State private var isRequesting = false
@@ -72,6 +68,17 @@ struct HealthPermissionView: View {
         Task {
             do {
                 try await HealthKitService.shared.requestAuthorization()
+
+                // Activate background delivery + the change observer right
+                // away, rather than waiting for the next app launch (when
+                // FitInApp's init() would otherwise pick this up). Without
+                // this, there'd be a window on fresh installs where the
+                // observer stays inert until the user relaunches the app.
+                await HealthKitService.shared.enableBackgroundDelivery()
+                HealthKitService.shared.startObservingHealthChanges {
+                    await handleHealthDataChanged()
+                }
+
                 isRequesting = false
                 onAuthorizationHandled()
             } catch {

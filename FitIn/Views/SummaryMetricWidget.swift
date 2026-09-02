@@ -9,7 +9,7 @@ import Charts
 
 // A single metric "widget" card, styled after Apple Fitness's Summary
 // tab widgets: icon + title, big current value vs goal, a progress bar,
-// and a small sparkline of recent days.
+// and a small weekly line chart with colored dots for each day.
 struct SummaryMetricWidget: View {
     let icon: String
     let title: String
@@ -47,12 +47,18 @@ struct SummaryMetricWidget: View {
             if points.count >= 2 {
                 Chart {
                     ForEach(points) { point in
-                        BarMark(
+                        LineMark(
                             x: .value("Date", point.date, unit: .day),
                             y: .value(title, point.value)
                         )
-                        .foregroundStyle(color.opacity(0.7))
-                        .cornerRadius(3)
+                        .foregroundStyle(color)
+                        .interpolationMethod(.monotone)
+
+                        PointMark(
+                            x: .value("Date", point.date, unit: .day),
+                            y: .value(title, point.value)
+                        )
+                        .foregroundStyle(color)
                     }
                 }
                 .frame(height: 48)
