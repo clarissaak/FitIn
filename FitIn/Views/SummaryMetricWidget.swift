@@ -62,7 +62,19 @@ struct SummaryMetricWidget: View {
                     }
                 }
                 .frame(height: 48)
-                .chartXAxis(.hidden)
+                .padding(.top, 8)
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .day)) { value in
+                        AxisValueLabel(centered: true) {
+                            if let date = value.as(Date.self) {
+                                Text(date.formatted(.dateTime.weekday(.narrow)))
+                                    .font(.caption2)
+                                    .foregroundStyle(.primary)
+                                    .padding(.top, 4)
+                            }
+                        }
+                    }
+                }
                 .chartYAxis(.hidden)
             }
         }
