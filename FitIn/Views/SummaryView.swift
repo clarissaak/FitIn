@@ -4,17 +4,22 @@
 //
 //  Created by Clarissa Kristanto on 8/7/26.
 //
+//
+//  SummaryView.swift
+//  FitIn
+//
+//  Created by Clarissa Kristanto on 8/7/26.
+//
 import SwiftUI
 
 // The Summary tab: today's date, then a widget card per metric (Steps,
 // Elevated Heart Rate Minutes), each with today's progress and a small
-// recent-history sparkline. 
+// recent-history sparkline.
 struct SummaryView: View {
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = SummaryViewModel()
     @Environment(\.scenePhase) private var scenePhase
-    @State private var isShowingAccount = false
 
     var body: some View {
         NavigationStack {
@@ -66,9 +71,6 @@ struct SummaryView: View {
                 .padding()
             }
             .navigationBarHidden(true)
-            .sheet(isPresented: $isShowingAccount) {
-                AccountView()
-            }
             .refreshable {
                 await refresh()
             }
@@ -89,24 +91,12 @@ struct SummaryView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(Self.dateHeaderFormatter.string(from: Date()))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text("Summary")
-                    .font(.largeTitle.bold())
-            }
-
-            Spacer()
-
-            Button {
-                isShowingAccount = true
-            } label: {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.title)
-            }
-            .padding(.top, 8)
+        VStack(alignment: .leading, spacing: 2) {
+            Text(Self.dateHeaderFormatter.string(from: Date()))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text("Summary")
+                .font(.largeTitle.bold())
         }
     }
 

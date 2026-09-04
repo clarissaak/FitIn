@@ -6,14 +6,12 @@
 //
 import SwiftUI
 
-// Presented as a sheet from the account icon: account info, health
-// details + goals, notification settings, group management (creator
-// only), and sign out — styled after Apple Fitness's account/profile
-// screen.
+// A tab in the main nav bar: account info, health details + goals,
+// notification settings, group management (creator only), and sign out
+// — styled after Apple Fitness's account/profile screen.
 struct AccountView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var groupSetupViewModel: GroupSetupViewModel
-    @Environment(\.dismiss) private var dismiss
 
     @State private var isShowingSignOutConfirmation = false
     @State private var isCreator = false
@@ -22,9 +20,8 @@ struct AccountView: View {
         NavigationStack {
             Form {
                 Section {
-                    if let user = authViewModel.currentUser {
-                        LabeledContent("Name", value: user.name ?? "—")
-                        LabeledContent("Email", value: user.email ?? "—")
+                    NavigationLink("Profile Details") {
+                        ProfileDetailsView()
                     }
                 }
 
@@ -37,16 +34,12 @@ struct AccountView: View {
                     NavigationLink("Edit Goals") {
                         GoalSettingView()
                     }
-                } header: {
-                    Text("Health Details & Goals")
                 }
 
                 Section {
                     NavigationLink("Notifications") {
                         NotificationSettingsView()
                     }
-                } header: {
-                    Text("Notifications")
                 }
 
                 if isCreator {
@@ -54,8 +47,6 @@ struct AccountView: View {
                         NavigationLink("Pending Requests") {
                             PendingRequestsView()
                         }
-                    } header: {
-                        Text("Group Management")
                     }
                 }
 
@@ -66,12 +57,6 @@ struct AccountView: View {
                 }
             }
             .navigationTitle("Account")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
             .confirmationDialog(
                 "Sign out of FitIn?",
                 isPresented: $isShowingSignOutConfirmation,
@@ -79,7 +64,6 @@ struct AccountView: View {
             ) {
                 Button("Sign Out", role: .destructive) {
                     authViewModel.signOut()
-                    dismiss()
                 }
                 Button("Cancel", role: .cancel) {}
             }

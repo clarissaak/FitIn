@@ -4,12 +4,10 @@
 //
 //  Created by Clarissa Kristanto on 8/8/26.
 //
-
-
 import SwiftUI
 
 // The main tab bar once onboarding is complete: Summary (personal
-// dashboard) and Sharing (group progress).
+// dashboard), Sharing (group progress), and Account.
 struct NavBarView: View {
     var body: some View {
         TabView {
@@ -22,6 +20,11 @@ struct NavBarView: View {
                 .tabItem {
                     Label("Sharing", systemImage: "person.2.fill")
                 }
+
+            AccountView()
+                .tabItem {
+                    Label("Account", systemImage: "person.crop.circle.fill")
+                }
         }
     }
 }
@@ -30,4 +33,5 @@ struct NavBarView: View {
     NavBarView()
         .environmentObject(GroupSetupViewModel())
         .environmentObject(AuthViewModel())
+        .environmentObject(NotificationPreferencesStore())
 }
